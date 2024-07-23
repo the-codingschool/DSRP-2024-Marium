@@ -1,0 +1,15 @@
+You can add notes here
+
+```{r}
+#you can put code here
+fileName <- list.files("data")
+data <- read.csv(paste0("data/",fileName))
+
+data
+```
+
+Notes need to go outside of the grey box
+
+```{r}
+
+```

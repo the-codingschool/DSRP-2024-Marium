@@ -1,0 +1,48 @@
+**BlueBikes Data Cleaning**
+
+```{r}
+install.packages("tidyverse")
+library(tidyr) 
+library(dplyr) 
+```
+
+Loading dataset
+
+```{r}
+## read in dataset
+file_name <- list.files("data")
+data_original <- read.csv(paste0("data/",file_name))
+data_original
+```
+
+Separate started_at into start_date and start_time
+
+```{r}
+new_data <- separate(data = data_original, col = "started_at", into = c("start_date", "start_time"), sep = " ")
+head(new_data)
+```
+
+Separate ended_at into end_date and end_time
+
+```{r}
+new_data <- separate(data = new_data, col = "ended_at", into = c("end_date", "end_time"), sep = " ")
+head(new_data)
+```
+
+trying to sort
+
+```{r}
+#trial <- pivot_wider(new_data, names_from=member_casual, values_from = c("start_date","start_time","end_date","end_time"))
+#trial
+#trial2 <- pivot_longer(new_data, c("start_date","start_time","end_date","end_time"), names_to="times", values_to="member_casual")
+#trial2
+#new_df <- new_data(
+  #start_date = new_data$start_date,
+  #start_time = new_data$start_time,
+  #end_date = new_data$end_date,
+  #end_time = new_data$end_time,
+  #member_casual = new_data$member_casual
+#)
+#trial3 <- pivot_wider(new_df, names_from=member_casual, values_from=c("start_date","start_time","end_date","end_time"))
+#trial3
+```

@@ -1,0 +1,13 @@
+```{r}
+getwd()
+```
+
+
+```{r}
+fileName <- "/Users/renatetoldo/Marium_Project/Data/202406-bluebikes-tripdata.csv"
+file.exists(fileName)
+
+data <- read.csv(fileName)
+head(data)
+```
+

@@ -1,5 +1,7 @@
 **BlueBikes Data Cleaning**
 
+Installing packages
+
 ```{r}
 install.packages("tidyverse")
 library(tidyr) 
@@ -15,21 +17,56 @@ data_original <- read.csv(paste0("data/",file_name))
 data_original
 ```
 
+Add column: total trip time
+
+```{r}
+times <- mutate(data_original, trip_time = difftime(ended_at,started_at, units = "mins"))
+head(times)
+```
+
+Creating a new dataset with relevant columns onlu
+
 Separate started_at into start_date and start_time
 
 ```{r}
-new_data <- separate(data = data_original, col = "started_at", into = c("start_date", "start_time"), sep = " ")
-head(new_data)
+#new_data <- separate(data = data_original, col = "started_at", into = c("start_date", "start_time"), sep = " ")
+#head(new_data)
 ```
 
 Separate ended_at into end_date and end_time
 
 ```{r}
-new_data <- separate(data = new_data, col = "ended_at", into = c("end_date", "end_time"), sep = " ")
-head(new_data)
+#new_data <- separate(data = new_data, col = "ended_at", into = c("end_date", "end_time"), sep = " ")
+#head(new_data)
 ```
 
-trying to sort
+Creating new dataset
+
+```{r}
+times <- select(new_data,"ride_id","rideable_type","start_date","end_date","start_time","end_time","start_station_id", "end_station_id")
+times
+```
+
+Finding trip times of one-day trips
+
+```{r}
+#hi
+```
+
+```{r}
+#making new dataset for one-day trips only
+#times_one_day <- filter(times, start_date==end_date)
+#head(times_one_day)
+
+#converting the one-day starting times into seconds
+#times_one_day <- separate(data = times_one_day, col = "start_time", into = c("start_min", "start_sec", "start_ms"), sep = ":")
+#times_one_day <- separate(data = times_one_day, col = "start_ms", into = c("start_ms1", "start_ms2"), sep = ".")
+#start_times <- select(times_one_day, "start_min", "start_sec", "start_ms")
+#times_one_day <- mutate(times_one_day, start_tot = (as.numeric())
+#head(times_one_day)
+```
+
+Making a new dataset
 
 ```{r}
 #trial <- pivot_wider(new_data, names_from=member_casual, values_from = c("start_date","start_time","end_date","end_time"))
@@ -45,4 +82,8 @@ trying to sort
 #)
 #trial3 <- pivot_wider(new_df, names_from=member_casual, values_from=c("start_date","start_time","end_date","end_time"))
 #trial3
+```
+
+```{r}
+#as.numeric(c("27.549798","45779.75"))
 ```

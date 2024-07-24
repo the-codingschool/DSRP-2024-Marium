@@ -1,4 +1,9 @@
 ```{r}
+library(tidyverse)
+library(janitor)
+library(dplyr)
+library(ggplot2)
+
 getwd()
 ```
 

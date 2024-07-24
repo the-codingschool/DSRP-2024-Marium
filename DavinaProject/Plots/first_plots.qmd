@@ -1,0 +1,69 @@
+**BlueBikes Plots**
+
+Installing packages
+
+```{r}
+#install.packages("tidyverse")
+library(tidyr) 
+library(dplyr) 
+library(ggplot2)
+```
+
+Loading dataset
+
+```{r}
+# read in dataset
+file_name <- list.files("data")
+data_original <- read.csv(paste0("data/",file_name))
+data_original
+```
+
+Add column: total trip time
+
+```{r}
+times <- mutate(data_original, trip_time = difftime(ended_at,started_at, units = "mins"))
+head(times)
+```
+
+Creating new datasets with relevant columns only
+
+```{r}
+# all relevant columns
+rel_data <- select(times,"ride_id","rideable_type","trip_time","start_station_id", "end_station_id")
+
+# type of bike and trip time
+bike_time <- select(times,"rideable_type","trip_time")
+
+# type of bike and stations
+bike_station <- select(times,"rideable_type","start_station_id", "end_station_id")
+
+# trip time and stations
+time_station <- select(times,"trip_time","start_station_id", "end_station_id")
+
+head(rel_data)
+bike_time
+head(bike_station)
+head(time_station)
+```
+
+**Plots**
+
+Scatter Plot: Time of Trip Vs. Type of Bike
+
+```{r}
+ggplot(data = bike_time, aes(x = rideable_type, y = trip_time)) +
+  geom_point() +
+  xlab('Type of Bike') +
+  ylab('Trip Time') +
+  ggtitle('Time of Trip Vs.Type of Bike')
+```
+
+Trip Time Vs. Starting Station
+
+```{r}
+ggplot(data = time_station, aes(x = start_station_id, y = trip_time)) +
+  geom_point() +
+  xlab('Starting Station') +
+  ylab('Trip Time') +
+  ggtitle('Time of Trip Vs. Starting Station')
+```

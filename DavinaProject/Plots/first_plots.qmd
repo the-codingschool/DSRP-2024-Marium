@@ -3,10 +3,19 @@
 Installing packages
 
 ```{r}
-#install.packages("tidyverse")
+install.packages("tidyverse")
 library(tidyr) 
 library(dplyr) 
 library(ggplot2)
+#install.packages("tmap", repos = c("https://r-tmap.r-universe.dev",
+                                  # "https://cloud.r-project.org"))
+library(sf)
+library(terra)
+library(dplyr)
+#library(spData)
+#library(spDataLarge)
+library(tmap)    
+library(leaflet)
 ```
 
 Loading dataset
@@ -40,30 +49,75 @@ bike_station <- select(times,"rideable_type","start_station_id", "end_station_id
 # trip time and stations
 time_station <- select(times,"trip_time","start_station_id", "end_station_id")
 
-head(rel_data)
-bike_time
-head(bike_station)
-head(time_station)
+#locations
+start_locations <- select(times,"start_station_id","start_lat","start_lng")
+
+#head(rel_data)
+#bike_time
+#head(bike_station)
+#head(time_station)
+head(start_locations)
 ```
 
 **Plots**
 
-Scatter Plot: Time of Trip Vs. Type of Bike
+Scatter Plot: Average Time of Trip Vs. Type of Bike
 
 ```{r}
-ggplot(data = bike_time, aes(x = rideable_type, y = trip_time)) +
-  geom_point() +
+classical_times <- filter(bike_time, bike_time$rideable_type=="classic_bike")
+#classical_times
+mean_classical <- mean(classical_times$trip_time)
+mean_classical
+
+electrical_times <- filter(bike_time, bike_time$rideable_type=="electric_bike")
+#electrical_times
+mean_electrical <- mean(electrical_times$trip_time)
+mean_electrical
+
+bike_mean_times <- data.frame(bike_type=c("classical", "electrical"), avg_time=c(mean_classical, mean_electrical))
+bike_mean_times
+
+ggplot(data = bike_mean_times, aes(x = bike_type, y = avg_time)) +
+  geom_bar(stat = "identity") +
   xlab('Type of Bike') +
-  ylab('Trip Time') +
-  ggtitle('Time of Trip Vs.Type of Bike')
+  ylab('Average Trip Time') +
+  ggtitle('Average Time of Trip Vs.Type of Bike')
+
+ggplot(data = bike_time, aes(x = rideable_type, y = trip_time)) + 
+  geom_bar(stat = "summary", fun = "mean")
 ```
 
-Trip Time Vs. Starting Station
+Average Trip Time Vs. Starting Station
 
 ```{r}
-ggplot(data = time_station, aes(x = start_station_id, y = trip_time)) +
-  geom_point() +
-  xlab('Starting Station') +
-  ylab('Trip Time') +
-  ggtitle('Time of Trip Vs. Starting Station')
+ggplot(data = time_station, aes(x = start_station_id, y = trip_time)) + 
+  geom_bar(stat = "summary", fun = "mean")
 ```
+
+Map of Starting Locations
+
+```{r}
+start_locations <- select(times,"start_station_id","start_lat","start_lng")
+
+start_loc <- st_as_sf(start_locations, coords = c("start_lng", "start_lat"))
+
+ggplot(start_loc) + 
+  geom_sf(aes(color="red"))
+
+```
+
+Map of Ending Locations
+
+```{r}
+end_locations <- select(times,"end_station_id","end_lat","end_lng")
+
+end_locations <- na.omit(end_locations[1:3])
+end_locations
+
+end_loc <- st_as_sf(end_locations, coords = c("end_lng", "end_lat"))
+
+ggplot(end_loc) + 
+  geom_sf(aes(color="red"))
+```
+
+Trip Time, Starting Location

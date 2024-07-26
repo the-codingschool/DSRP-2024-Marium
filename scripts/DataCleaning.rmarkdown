@@ -1,5 +1,6 @@
 Read in dataset
 
+
 ```{r}
 library(titanic)
 library(dplyr)
@@ -20,14 +21,18 @@ dim(data)
 str(data)
 ```
 
+
 Taking out NAs
+
 
 ```{r}
 data_clean <- drop_na(remove_empty(data, c("rows", "cols")))
 dim(data_clean)
 ```
 
+
 made smaller data set and separated date and time
+
 
 ```{r}
 data_time_sep <- data_clean %>%
@@ -39,7 +44,9 @@ data_time_sep <- data_clean %>%
 head(data_time_sep)
 ```
 
+
 add new column to data_time_sep called ride_time_mins
+
 
 ```{r}
 
@@ -61,7 +68,9 @@ head(data_distance)
 
 ```
 
+
 map of latitude and longitude for a sample of 50 bike's starting position
+
 
 ```{r}
 data_sample <- slice_sample(data_clean, n=50)
@@ -71,3 +80,4 @@ data_sample <- slice_sample(data_clean, n=50)
 coordinates(data_sample) <- ~start_lng+start_lat
 addMarkers(addTiles(leaflet(data_sample)))
 ```
+

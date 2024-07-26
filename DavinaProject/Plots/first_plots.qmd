@@ -23,6 +23,10 @@ library(downloader)
 library(caTools)
 library(FNN)
 library(readxl)
+
+library(lubridate)
+
+library(digest)
 ```
 
 Loading dataset
@@ -91,7 +95,8 @@ ggplot(data = bike_mean_times, aes(x = bike_type, y = avg_time)) +
   ggtitle('Average Time of Trip Vs.Type of Bike')
 
 ggplot(data = bike_time, aes(x = rideable_type, y = trip_time)) + 
-  geom_bar(stat = "summary", fun = "mean")
+  geom_bar(stat = "summary", fun = "mean") +
+    labs(x = "Type of Bike", y = "Average Trip Time", title = "Average Trip Time by Type of Bike")
 ```
 
 Average Trip Time Vs. Starting Station
@@ -136,7 +141,7 @@ head(date_time)
 
 dates <- data.frame(start_date = as.Date(date_time$start_date), end_date = as.Date(date_time$end_date)) 
 
-days <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time, )          
+days <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time)          
 days
 ```
 
@@ -148,6 +153,71 @@ days$start_weekday <- factor(days$start_weekday, levels = c("Sunday", "Monday", 
 ggplot(data = days, aes(x = start_weekday, y = trip_time)) + 
   geom_bar(stat = "summary", fun = "mean") +
   labs(x = "Day of the Week", y = "Average Trip Time", title = "Average Trip Time by Day of the Week")
+```
+
+Converting all data into numerical values!
+
+```{r}
+#date_time
+#days
+num_data <- data_frame(rideable_type = date_time$rideable_type, 
+                       start_time = date_time$start_time, 
+                       start_weekday = days$start_weekday, 
+                       end_weekday = days$end_weekday, 
+                       start_station_id = date_time$start_station_id, 
+                       end_station_id = date_time$end_station_id,
+                       start_lat = date_time$start_lat,
+                       start_lng = date_time$start_lng,
+                       end_lat = date_time$end_lat,
+                       end_lng = date_time$end_lng,
+                       member_casual = times$member_casual,
+                       trip_time = date_time$trip_time)
+
+#head(num_data)
+
+#making rideable type numerical
+num_data <- mutate(num_data, classic_bike = ifelse(rideable_type=="classic_bike", 1, 0),
+         electric_bike = ifelse(rideable_type=="electric_bike", 1, 0))
+
+#making start_weekday numerical
+num_data <- mutate(num_data, sun = ifelse(start_weekday=="Sunday", 1, 0),
+                   mon = ifelse(start_weekday=="Monday", 1, 0),
+                   tue = ifelse(start_weekday=="Tuesday", 1, 0),
+                   wed = ifelse(start_weekday=="Wednesday", 1, 0),
+                   thu = ifelse(start_weekday=="Thursday", 1, 0),
+                   fri = ifelse(start_weekday=="Friday", 1, 0),
+                   sat = ifelse(start_weekday=="Saturday", 1, 0))
+
+#making start_time numerical
+num_data <- mutate(num_data, start_timeform=hms(num_data$start_time))
+
+#making start_station_id numerical
+#id_to_crc32 <- function(id) {return(as.numeric(crc32(id)))}
+
+#num_data <- mutate(num_data, start_station_id_hashed =
+                     #sapply(num_data$start_station_id, id_to_crc32))
+
+id_to_crc32 <- function(id) {
+  hash_value <- digest(id, algo = "crc32", serialize = FALSE)
+  return(as.numeric(paste0("0x", hash_value)))
+}
+
+# Apply the function to hash the start_station_id column
+num_data <- mutate(num_data, start_station_id_hashed = sapply(start_station_id, id_to_crc32))
+
+# Apply the function to hash the start_station_id column
+num_data <- mutate(num_data, end_station_id_hashed = sapply(end_station_id, id_to_crc32))
+
+head(num_data)
+```
+
+Checking the hashed values
+
+```{r}
+filter(num_data, start_station_id=="M32013")
+#hashed: 3812739417	
+filter(num_data, end_station_id=="M32013")
+#hashed: 3812739417
 ```
 
 Idea
@@ -163,29 +233,29 @@ KNN model that predicts ending time, with the following inputs:
 Creating Dataset
 
 ```{r}
-real_data <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time, start_station_id = times$start_station_id, end_station_id = times$start_station_id, start_time = date_time$start_time, end_time = date_time$end_time)   
-head(real_data)
+#real_data <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time, start_station_id = times$start_station_id, end_station_id = times$start_station_id, start_time = date_time$start_time, end_time = date_time$end_time)   
+#head(real_data)
 
-needed_data <- select(real_data, "start_station_id", "end_station_id", "start_weekday", "start_time", "end_time") 
-head(needed_data)
+#needed_data <- select(real_data, "start_station_id", "end_station_id", "start_weekday", "start_time", "end_time") 
+#needed_data
 ```
 
 Splitting dataset into training and testing data
 
 ```{r}
-set.seed(42)
+#set.seed(42)
 
-split <- sample.split(needed_data$end_time, SplitRatio = 0.8)
-train_data <- subset(needed_data, split == TRUE)
-test_data <- subset(needed_data, split == FALSE)
+#split <- sample.split(needed_data$end_time, SplitRatio = 0.8)
+#train_data <- subset(needed_data, split == TRUE)
+#test_data <- subset(needed_data, split == FALSE)
 ```
 
 Fitting the model
 
 ```{r}
-knn_model <- knn(train = train_data[, c('start_station_id', 'end_station_id', 'start_weekday', 'start_time')],
-                 test = test_data[, c('start_station_id', 'end_station_id', 'start_weekday', 'start_time')],
-                 cl = train_data$end_time, k = 5)
+#knn_model <- knn(train = train_data[, c('start_station_id', 'end_station_id', 'start_weekday', 'start_time')],
+                 #test = test_data[, c('start_station_id', 'end_station_id', #'start_weekday', 'start_time')],
+                # cl = train_data$end_time, k = 5)
 
 #knn_model <- knn(train = train_data[, c('mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoothness')],
            #      test = test_data[, c('mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoothness')],

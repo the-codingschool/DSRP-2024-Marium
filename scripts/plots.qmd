@@ -1,0 +1,164 @@
+```{r}
+library(titanic)
+library(dplyr)
+library(janitor)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(maps)
+library(ggmap)
+library(sp)
+library(leaflet)
+library(geosphere)
+#read in dataset
+file_name <- list.files("data")
+data <- read.csv("/Users/reddy/Documents/DSRP-Dataset/bluebikes/data/202406-bluebikes-tripdata.csv")
+head(data)
+dim(data)
+str(data)
+```
+
+```{r}
+data_clean <- drop_na(remove_empty(data, c("rows", "cols")))
+dim(data_clean)
+summary(df$started_at)
+
+data_distance <- data_clean |>
+  select(ride_id, member_casual, rideable_type, start_lat, start_lng, end_lat, end_lng, started_at, ended_at) |>
+  mutate(distance_km = distHaversine(cbind(start_lng, start_lat), cbind(end_lng, end_lat)) / 1000)
+```
+
+```{r}
+ggplot(data_time_sep, aes(x=member_casual, y=mean(ride_time_mins)))+
+  geom_bar(stat='identity')
+
+```
+
+Heatmap of bike type and member type
+
+```{r}
+data_agg <- data_clean %>%
+  group_by(rideable_type, member_casual) %>%
+  summarise(count = n())
+
+ggplot(data_agg, aes(x = rideable_type, y = member_casual, fill = count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "gray", high = "darkblue") +
+  labs(title = "Tile Plot of Member Type vs Rideable Type",
+       x = "Rideable Type",
+       y = "Member Type") +
+  theme_minimal()
+```
+
+histogram of where bikes ended
+
+```{r}
+data_slice_50 <- slice_head(arrange(data_clean,started_at), n=50)
+ggplot(data_slice_50, aes(x = end_station_name)) +
+  geom_bar(fill = "skyblue", color = "black") +
+  labs(title = "Count of Bike Rides Ending at Each Station",
+       x = "End Station Name",
+       y = "Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+histogram of where bikes started
+
+```{r}
+data_slice_50 <- slice_head(arrange(data_clean,started_at), n=50)
+ggplot(data_slice_50, aes(x = start_station_name)) +
+  geom_bar(fill = "skyblue", color = "black") +
+  labs(title = "Count of Bike Rides Ending at Each Station",
+       x = "End Station Name",
+       y = "Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Average Distance Traveled by Member Type
+
+```{r}
+data_mean_km <- data_distance %>%
+  group_by(member_casual) %>%
+  summarise(mean_distance_km = mean(distance_km))
+
+ggplot(data_mean_km, aes(x = member_casual, y = mean_distance_km)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  labs(title = "Average Distance Traveled by Member Type",
+       x = "Member Type",
+       y = "Average Distance (km)") +
+  theme_minimal()
+```
+
+Average Distance Traveled by Bike Type
+
+```{r}
+data_mean_km2 <- data_distance %>%
+  group_by(rideable_type) %>%
+  summarise(mean_distance_km = mean(distance_km))
+
+ggplot(data_mean_km2, aes(x = rideable_type, y = mean_distance_km)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  labs(title = "Average Distance Traveled by Bike Type",
+       x = "Bike Type",
+       y = "Average Distance (km)") +
+  theme_minimal()
+```
+
+Count of Riders Per Day
+
+```{r}
+data_month <- data_clean %>%
+  mutate(started_at = as.POSIXct(started_at, format = "%Y-%m-%d", tz = "UTC"))
+
+data_month <- data_month %>%
+  mutate(year_month = floor_date(started_at, "day"))
+
+monthly_counts <- data_month %>%
+  group_by(year_month) %>%
+  summarise(count = n())
+
+monthly_counts
+
+ggplot(monthly_counts, aes(x = year_month, y = count)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Count of Riders Per Day",
+       x = "Month",
+       y = "Count of Riders") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Start Locations with Distance
+
+```{r}
+ggplot(data_distance, aes(x = start_lng, y = start_lat, color = distance_km)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(title = "Start Locations with Distance", x = "Longitude", y = "Latitude", color = "Distance (km)") +
+  theme_minimal()
+```
+
+Distance by Day of Week
+
+```{r}
+data_day <- data_distance %>%
+  mutate(started_at = as.POSIXct(started_at, format = "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+         start_hour = hour(started_at),
+         start_day_of_week = wday(started_at, label = TRUE))
+
+ggplot(data_day, aes(x = start_day_of_week, y = distance_km)) +
+  geom_boxplot() +
+  labs(title = "Distance by Day of Week", x = "Day of Week", y = "Distance (km)") +
+  theme_minimal()
+```
+
+Violin Plot of Distance by Hour of Day
+
+```{r}
+ggplot(data_day, aes(x = as.factor(start_hour), y = distance_km)) +
+  geom_violin(fill = "skyblue", color = "black") +
+  labs(title = "Violin Plot of Distance by Hour of Day", x = "Hour of Day", y = "Distance (km)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```

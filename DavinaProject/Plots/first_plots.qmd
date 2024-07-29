@@ -96,7 +96,7 @@ ggplot(data = bike_mean_times, aes(x = bike_type, y = avg_time)) +
 
 ggplot(data = bike_time, aes(x = rideable_type, y = trip_time)) + 
   geom_bar(stat = "summary", fun = "mean") +
-    labs(x = "Type of Bike", y = "Average Trip Time", title = "Average Trip Time by Type of Bike")
+    labs(x = "Type of Bike", y = "Average Trip Duration", title = "Average Trip Duration by Type of Bike")
 ```
 
 Average Trip Time Vs. Starting Station
@@ -152,7 +152,7 @@ days$start_weekday <- factor(days$start_weekday, levels = c("Sunday", "Monday", 
 
 ggplot(data = days, aes(x = start_weekday, y = trip_time)) + 
   geom_bar(stat = "summary", fun = "mean") +
-  labs(x = "Day of the Week", y = "Average Trip Time", title = "Average Trip Time by Day of the Week")
+  labs(x = "Day of the Week", y = "Average Trip Duration", title = "Average Trip Duration by Day of the Week")
 ```
 
 Converting all data into numerical values!
@@ -188,6 +188,10 @@ num_data <- mutate(num_data, sun = ifelse(start_weekday=="Sunday", 1, 0),
                    fri = ifelse(start_weekday=="Friday", 1, 0),
                    sat = ifelse(start_weekday=="Saturday", 1, 0))
 
+#making member_casual numerical
+num_data <- mutate(num_data, member = ifelse(member_casual=="member", 1, 0),
+                   casual = ifelse(member_casual=="casual", 1, 0))
+
 #making start_time numerical
 num_data <- mutate(num_data, start_timeform=hms(num_data$start_time))
 
@@ -207,8 +211,44 @@ num_data <- mutate(num_data, start_station_id_hashed = sapply(start_station_id, 
 
 # Apply the function to hash the start_station_id column
 num_data <- mutate(num_data, end_station_id_hashed = sapply(end_station_id, id_to_crc32))
+```
 
-head(num_data)
+```{r}
+conv_data
+```
+
+Making final dataset
+
+```{r}
+conv_data <- select(num_data, 7:10, 13:26)
+
+data_original %>% 
+  mutate(started_at=parse_date_time(started_at, "Ymd HMS"),
+    start_hour=hour(started_at))
+
+#head(conv_data)
+
+final <- data_frame(
+  start_lat = conv_data$start_lat,
+  start_lng = conv_data$start_lng,
+  end_lat = conv_data$end_lat,
+  end_lng = conv_data$end_lng,
+  classic_bike = conv_data$classic_bike,
+  electric_bike = conv_data$electric_bike,
+  sun = conv_data$sun,
+  mon = conv_data$mon,
+  tue = conv_data$tue,
+  wed = conv_data$wed,
+  thu = conv_data$thu,
+  fri = conv_data$fri,
+  sat = conv_data$sat,
+  member = conv_data$member,
+  casual = conv_data$casual,
+  start_station_id_hash = conv_data$start_station_id_hashed,
+  end_station_id_hash = conv_data$start_station_id_hashed,
+  start_hour = data_original$start_hour)
+
+head(final)
 ```
 
 Checking the hashed values
@@ -218,6 +258,17 @@ filter(num_data, start_station_id=="M32013")
 #hashed: 3812739417	
 filter(num_data, end_station_id=="M32013")
 #hashed: 3812739417
+```
+
+```{r}
+#num_data <- select(num_data,,7:24)
+#num_data
+```
+
+Principal Component Analysis
+
+```{r}
+pca <- prcomp(final_data, center = TRUE, scale. = TRUE)
 ```
 
 Idea

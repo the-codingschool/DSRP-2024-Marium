@@ -1,5 +1,4 @@
 ```{r}
-library(titanic)
 library(dplyr)
 library(janitor)
 library(ggplot2)
@@ -11,9 +10,11 @@ library(ggmap)
 library(sp)
 library(leaflet)
 library(geosphere)
+library(corrplot)
+
 #read in dataset
 file_name <- list.files("data")
-data <- read.csv("/Users/reddy/Documents/DSRP-Dataset/bluebikes/data/202406-bluebikes-tripdata.csv")
+data <- read.csv("/Users/reddy/Documents/DSRP-Dataset/bluebikes/AarushProject/data/202406-bluebikes-tripdata.csv")
 head(data)
 dim(data)
 str(data)
@@ -22,7 +23,17 @@ str(data)
 ```{r}
 data_clean <- drop_na(remove_empty(data, c("rows", "cols")))
 dim(data_clean)
-summary(df$started_at)
+
+data_time_sep <- data_clean %>%
+  select(ride_id,started_at, ended_at, member_casual) %>%
+  separate(started_at, into = c("start_date", "start_time"), sep = " ") %>%
+  separate(ended_at, into = c("end_date", "end_time"), sep = " ") %>%
+  mutate(started_at = data_clean$started_at,ended_at = data_clean$ended_at) 
+
+data_time_sep <- data_time_sep %>%
+  mutate(started_at = ymd_hms(started_at),
+         ended_at = ymd_hms(ended_at),
+         ride_time_mins = as.numeric(difftime(ended_at, started_at, units = "mins")))
 
 data_distance <- data_clean |>
   select(ride_id, member_casual, rideable_type, start_lat, start_lng, end_lat, end_lng, started_at, ended_at) |>
@@ -161,4 +172,21 @@ ggplot(data_day, aes(x = as.factor(start_hour), y = distance_km)) +
   labs(title = "Violin Plot of Distance by Hour of Day", x = "Hour of Day", y = "Distance (km)") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+numeric_columns <- data_clean %>% select_if(is.numeric)
+
+
+summary(numeric_columns)
+
+
+pairs(numeric_columns)
+
+
+cor_matrix <- cor(numeric_columns)
+print(cor_matrix)
+
+# Visualize correlations
+corrplot(cor_matrix, method = "circle")
 ```

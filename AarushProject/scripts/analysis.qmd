@@ -1,0 +1,84 @@
+```{r}
+library(dplyr)
+library(janitor)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(maps)
+library(ggmap)
+library(sp)
+library(leaflet)
+library(geosphere)
+library(corrplot)
+library(rpart)
+library(randomForest)
+
+#read in dataset
+file_name <- list.files("data")
+data <- read.csv("/Users/reddy/Documents/DSRP-Dataset/bluebikes/AarushProject/data/202406-bluebikes-tripdata.csv")
+head(data)
+dim(data)
+str(data)
+```
+
+```{r}
+data_clean <- drop_na(remove_empty(data, c("rows", "cols")))
+dim(data_clean)
+
+data_time_sep <- data_clean %>%
+  select(ride_id,started_at, ended_at, member_casual) %>%
+  separate(started_at, into = c("start_date", "start_time"), sep = " ") %>%
+  separate(ended_at, into = c("end_date", "end_time"), sep = " ") %>%
+  mutate(started_at = data_clean$started_at,ended_at = data_clean$ended_at) 
+
+data_time_sep <- data_time_sep %>%
+  mutate(started_at = ymd_hms(started_at),
+         ended_at = ymd_hms(ended_at),
+         ride_time_mins = as.numeric(difftime(ended_at, started_at, units = "mins")))
+
+data_distance <- data_clean |>
+  select(ride_id, member_casual, rideable_type, start_lat, start_lng, end_lat, end_lng, started_at, ended_at) |>
+  mutate(distance_km = distHaversine(cbind(start_lng, start_lat), cbind(end_lng, end_lat)) / 1000)
+```
+
+analysis between the bike type and distance
+
+```{r}
+data_distance$distance_category <- cut(data_distance$distance_km, breaks = c(-Inf, 1, 5, Inf), labels = c("short", "medium", "long"))
+
+
+con_table_bike <- table(data_distance$distance_category, data_distance$rideable_type)
+chi_squared_test <- chisq.test(con_table_bike)
+print(chi_squared_test)
+#shows a correlation
+
+anova_model <- aov(distance_km ~ rideable_type, data = data_distance)
+summary(anova_model)
+```
+
+```{r}
+interaction_model <- lm(distance_km ~ rideable_type * member_casual, data = data_distance)
+
+summary(interaction_model)
+
+```
+
+```{r}
+
+data_distance$date <- as.Date(data_distance$started_at)
+data_distance$hour <- hour(data_distance$started_at)
+
+# Aggregate data by date
+daily_rides <- data_distance %>% group_by(date) %>% summarize(total_rides = n(), avg_distance = mean(distance_km))
+
+# Plot total rides over time
+ggplot(daily_rides, aes(x = date, y = total_rides)) +
+  geom_line() +
+  labs(title = "Total Rides Over Time", x = "Date", y = "Total Rides")
+
+# Plot average distance over time
+ggplot(daily_rides, aes(x = date, y = avg_distance)) +
+  geom_line() +
+  labs(title = "Average Distance Over Time", x = "Date", y = "Average Distance (km)")
+```

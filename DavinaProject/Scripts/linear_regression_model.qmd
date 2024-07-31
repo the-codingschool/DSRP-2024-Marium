@@ -1,4 +1,4 @@
-BlueBikes KNN Model
+BlueBikes Linear Regression
 
 Loading packages
 
@@ -201,51 +201,35 @@ train_data <- subset(final_data, split == TRUE)
 test_data <- subset(final_data, split == FALSE)
 ```
 
-Chosen Variables:
-
--   from PCA:
-
-    -   end station: end_station_id_hash
-
-    -   start station: start_station_id_hash
-
-    -   casual or member rider: casual
-
--   from plots:
-
-    -   start time: start_hour
-
-    -   weekend: sat, sun
-
-Fitting the model
+Fitting the Model
 
 ```{r}
-train_data
+lr_model <- lm(trip_time ~ start_station_id_hash+start_hour, 
+data = train_data)
+```
+
+Testing the Model
+
+```{r}
+pred <- predict(lr_model, newdata = test_data)
+```
+
+Evaluating the Model
+
+```{r}
+mse <- mean((test_data$trip_time - pred)^2, na.rm = TRUE) 
+mae <- mean(abs(test_data$trip_time - pred), na.rm = TRUE) 
+r_squared <- summary(lr_model)$r.squared
+mse
+mae
+r_squared
 ```
 
 ```{r}
-knn_model <- knn(train = train_data[, c('classic_bike','start_station_id_hash', 'end_station_id_hash', 'start_hour')], 
-                 test = test_data[, c('classic_bike','start_station_id_hash', 'end_station_id_hash', 'start_hour')], 
-                 cl = train_data$trip_time, 
-                 k = 300)
-#k=252 also works well
-#'member','classic_bike',
-```
-
-Testing the model
-
-```{r}
-pred <- knn_model
-```
-
-Evaluating the model
-
-```{r}
-confusion_matrix <- table(test_data$trip_time, pred)
-accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
-
-# Print the evaluation metrics
-cat('Confusion Matrix:\n')
-print(confusion_matrix)
-cat('\nAccuracy:', accuracy, '\n')
+ggplot(test_data, aes(x = trip_time, y = pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Real vs Predicted Values",
+       x = "True Trip Time",
+       y = "Predicted Trip Time")
 ```

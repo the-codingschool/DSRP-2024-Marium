@@ -29,8 +29,11 @@ library(digest)
 #install.packages("factoextra")
 library(factoextra)
 
-install.packages("bigmemory")
+#install.packages("bigmemory")
 library(bigmemory)
+
+#install.packages("geosphere")
+library(geosphere)
 ```
 
 Loading dataset
@@ -40,13 +43,14 @@ Loading dataset
 file_name <- list.files("data")
 data_original <- read.csv(paste0("data/",file_name))
 data_original
+data_original <- na.omit(data_original)
 ```
 
 Add column: total trip time
 
 ```{r}
 times <- mutate(data_original, trip_time = difftime(ended_at,started_at, units = "mins"))
-head(times)
+times
 ```
 
 Creating new datasets with relevant columns only
@@ -66,6 +70,15 @@ time_station <- select(times,"trip_time","start_station_id", "end_station_id")
 
 #locations
 start_locations <- select(times,"start_station_id","start_lat","start_lng")
+
+date_time <- separate(data = times, col="started_at", into=c("start_date","start_time"), sep=" ")
+date_time <- separate(data = date_time, col="ended_at", into=c("end_date","end_time"), sep=" ")
+head(date_time)
+
+dates <- data.frame(start_date = as.Date(date_time$start_date), end_date = as.Date(date_time$end_date)) 
+
+days <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time)          
+days
 
 #head(rel_data)
 #bike_time
@@ -159,6 +172,10 @@ data_original %>%
   mutate(started_at=parse_date_time(started_at, "Ymd HMS"),
     start_hour=hour(started_at))
 
+compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
+  distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
+}
+
 final_data <- data_frame(
   sun = conv_data$sun,
   sat = conv_data$sat,
@@ -169,7 +186,12 @@ final_data <- data_frame(
   start_station_id_hash = conv_data$start_station_id_hashed,
   end_station_id_hash = conv_data$start_station_id_hashed,
   start_hour = hour(conv_data$start_timeform),
-  trip_time = ifelse(round(times$trip_time, digits = 0) <= 30, round(times$trip_time, digits = 0), NA))
+  distance = ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 4000, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA),
+  start_lon = data_original$start_lng,
+  start_lat = data_original$start_lat,
+  end_lat = data_original$end_lat,
+  end_lon = data_original$end_lng,
+  trip_time = ifelse(round(times$trip_time, digits = 0) <= 25, round(times$trip_time, digits = 0), NA))
 
 final_data$trip_time <- as.numeric(final_data$trip_time)
 
@@ -189,6 +211,9 @@ Dataset
 ```{r}
 head(final_data)
 unique(final_data$trip_time)
+max(final_data$distance)
+mean(final_data$distance)
+summary(final_data)
 ```
 
 Splitting the Data
@@ -224,12 +249,25 @@ train_data
 ```
 
 ```{r}
-knn_model <- knn(train = train_data[, c('classic_bike','start_station_id_hash', 'end_station_id_hash', 'start_hour')], 
-                 test = test_data[, c('classic_bike','start_station_id_hash', 'end_station_id_hash', 'start_hour')], 
+knn_model <- knn(train = train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')], 
+                 test = test_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon','classic_bike')], 
                  cl = train_data$trip_time, 
-                 k = 300)
-#k=252 also works well
-#'member','classic_bike',
+                 k = 28)
+#highest: 0.5843237 
+#c('distance','start_lon','start_lat','end_lat','end_lon', 'classic_bike')
+#up to 25km only
+#k=17
+
+#c('distance','start_lon','start_lat','end_lat','end_lon','start_station_id_hash', 'end_station_id_hash', 'start_hour', 'classic_bike', 'weekend')
+#k=6
+
+#'start_station_id_hash', 'end_station_id_hash','classic_bike','start_hour'
+
+#, 'start_hour', 'classic_bike', 'weekend'
+
+#'member','classic_bike'
+#'start_hour', 'classic_bike'
+#'start_station_id_hash', 'end_station_id_hash',
 ```
 
 Testing the model
@@ -248,4 +286,109 @@ accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 cat('Confusion Matrix:\n')
 print(confusion_matrix)
 cat('\nAccuracy:', accuracy, '\n')
+```
+
+```{r}
+# Define the range of k-values to test
+k_values <- seq(1, 25)
+accuracy <- numeric(length(k_values))
+
+# Prepare training and test sets
+train_x <- train_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+train_y <- train_data$trip_time
+test_x <- test_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+test_y <- test_data$trip_time
+
+# Evaluate KNN model for each k value
+for (i in seq_along(k_values)) {
+  k <- k_values[i]
+  
+  # Train the KNN model and make predictions
+  predictions <- knn(train = train_x, test = test_x, cl = train_y, k = k)
+  
+  # Calculate accuracy (assuming exact match is required)
+  accuracy[i] <- mean(predictions == test_y)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(k = k_values, accuracy = accuracy)
+
+# Plot accuracy vs k-value
+ggplot(accuracy_df, aes(x = k, y = accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy of KNN Model vs K-value",
+       x = "K-value",
+       y = "Accuracy") +
+  theme_minimal()
+```
+
+```{r}
+# Define the range of k-values to test
+k_values <- seq(25, 50)
+accuracy <- numeric(length(k_values))
+
+# Prepare training and test sets
+train_x <- train_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+train_y <- train_data$trip_time
+test_x <- test_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+test_y <- test_data$trip_time
+
+# Evaluate KNN model for each k value
+for (i in seq_along(k_values)) {
+  k <- k_values[i]
+  
+  # Train the KNN model and make predictions
+  predictions <- knn(train = train_x, test = test_x, cl = train_y, k = k)
+  
+  # Calculate accuracy (assuming exact match is required)
+  accuracy[i] <- mean(predictions == test_y)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(k = k_values, accuracy = accuracy)
+
+# Plot accuracy vs k-value
+ggplot(accuracy_df, aes(x = k, y = accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy of KNN Model vs K-value",
+       x = "K-value",
+       y = "Accuracy") +
+  theme_minimal()
+```
+
+```{r}
+# Define the range of k-values to test
+k_values <- seq(50, 100)
+accuracy <- numeric(length(k_values))
+
+# Prepare training and test sets
+train_x <- train_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+train_y <- train_data$trip_time
+test_x <- test_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+test_y <- test_data$trip_time
+
+# Evaluate KNN model for each k value
+for (i in seq_along(k_values)) {
+  k <- k_values[i]
+  
+  # Train the KNN model and make predictions
+  predictions <- knn(train = train_x, test = test_x, cl = train_y, k = k)
+  
+  # Calculate accuracy (assuming exact match is required)
+  accuracy[i] <- mean(predictions == test_y)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(k = k_values, accuracy = accuracy)
+
+# Plot accuracy vs k-value
+ggplot(accuracy_df, aes(x = k, y = accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy of KNN Model vs K-value",
+       x = "K-value",
+       y = "Accuracy") +
+  theme_minimal()
 ```

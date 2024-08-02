@@ -1,4 +1,4 @@
-BlueBikes Principal Component Analysis
+BlueBikes Chi-Squared Test
 
 Loading packages
 
@@ -28,6 +28,15 @@ library(digest)
 
 #install.packages("factoextra")
 library(factoextra)
+
+#install.packages("bigmemory")
+library(bigmemory)
+
+#install.packages("geosphere")
+library(geosphere)
+
+#install.packages("vcd")
+library(vcd)
 ```
 
 Loading dataset
@@ -37,13 +46,14 @@ Loading dataset
 file_name <- list.files("data")
 data_original <- read.csv(paste0("data/",file_name))
 data_original
+data_original <- na.omit(data_original)
 ```
 
 Add column: total trip time
 
 ```{r}
 times <- mutate(data_original, trip_time = difftime(ended_at,started_at, units = "mins"))
-head(times)
+times
 ```
 
 Creating new datasets with relevant columns only
@@ -63,6 +73,15 @@ time_station <- select(times,"trip_time","start_station_id", "end_station_id")
 
 #locations
 start_locations <- select(times,"start_station_id","start_lat","start_lng")
+
+date_time <- separate(data = times, col="started_at", into=c("start_date","start_time"), sep=" ")
+date_time <- separate(data = date_time, col="ended_at", into=c("end_date","end_time"), sep=" ")
+head(date_time)
+
+dates <- data.frame(start_date = as.Date(date_time$start_date), end_date = as.Date(date_time$end_date)) 
+
+days <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time)          
+days
 
 #head(rel_data)
 #bike_time
@@ -132,6 +151,24 @@ num_data <- mutate(num_data, end_station_id_hashed = sapply(end_station_id, id_t
 Making final dataset
 
 ```{r}
+#making time ranges
+start <- 0
+end <- 1500
+interval <- 5
+
+ranges <- sapply(seq(start, end - interval, by = interval), function(x) {
+  paste(x, x + interval, sep = "-")
+})
+
+#print(ranges)
+
+#defining the time ranges
+numsfive <- seq(from = 0, to = 1500, by = 5)
+
+#print(numsfive)
+```
+
+```{r}
 conv_data <- select(num_data, 7:10, 13:26)
 
 data_original %>% 
@@ -142,11 +179,6 @@ compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
   distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
 }
 
-trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
-trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
-
-trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
-
 final_data <- data_frame(
   sun = conv_data$sun,
   sat = conv_data$sat,
@@ -154,51 +186,81 @@ final_data <- data_frame(
   weekend = ifelse(conv_data$sat == 1 | conv_data$sun == 1, 1, 0),
   member = conv_data$member,
   casual = conv_data$casual,
+  start_station_id_hash = conv_data$start_station_id_hashed,
+  end_station_id_hash = conv_data$start_station_id_hashed,
   start_hour = hour(conv_data$start_timeform),
-  distance = trip_distance,
+  distance = ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 4000, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA),
   start_lon = data_original$start_lng,
   start_lat = data_original$start_lat,
   end_lat = data_original$end_lat,
   end_lon = data_original$end_lng,
-  trip_time = as.numeric(trip_time_num))
+  trip_time = ifelse(round(times$trip_time, digits = 0) <= 25, round(times$trip_time, digits = 0), NA))
 
-final_data$trip_time <- as.numeric(cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE))
+final_data$trip_time <- as.numeric(final_data$trip_time)
 
-#final_data$trip_time <- as.numeric(final_data$trip_time)
+final_data$trip_time <- cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE)
+
+final_data$trip_time <- as.numeric(final_data$trip_time)
 
 final_data <- na.omit(final_data)
 
 final_data
 ```
 
-Principal Component Analysis
-
 ```{r}
-data_normalized <- scale(final_data)
-
-data_pca <- prcomp(data_normalized, scale. = TRUE)
-summary(data_pca)
+head(final_data)
 ```
 
 ```{r}
-fviz_eig(data_pca, addlabels = TRUE)
-
-fviz_pca_var(data_pca, col.var = "black", repel = TRUE)
-
-fviz_cos2(data_pca, choice = "var", axes = 1:2)
-
-fviz_pca_var(data_pca, col.var = "cos2",
-            gradient.cols = c("black", "orange", "green"),
-            repel = TRUE)
-#variables in green = independent variables with most impact on dataset
-#variables in orange = independent variables with some impact on dataset
-#variables in black = independent variables with low impact on dataset
+head(conv_data)
 ```
 
-Variables that will be used in the KNN model based of PCA:
+```{r}
+head(data_original)
+```
 
--   end station: end_station_id_hash
+```{r}
+head(times)
+times %>%
+  select(ride_id, rideable_type, started_at, ended_at, start_station_name,start_station_id, end_station_name, end_station_id, start_lat, start_lng, end_lat, end_lng, member_casual, trip_time) %>%
+  mutate(
+    trip_time = round(times$trip_time, digits = 0)
+  )
 
--   start station: start_station_id_hash
+times <- na.omit(times)
+```
 
--   casual or member rider: casual, member
+Chi-Squared Test between Member Type and Bike Type
+
+```{r}
+con_table <- table(data_original$member_casual, data_original$rideable_type)
+con_table
+chisq_results <- chisq.test(con_table)
+```
+
+```{r}
+chisq_results$p.value
+#very low, so null hypothesis can be rejected
+
+chisq_results$residuals
+#classic bikes used by causal riders more than expected and by members less than expected
+#electric bikes used by casual riders less than expected and by members more than expected
+```
+
+```{r}
+con_df <- as.data.frame(con_table)
+colnames(con_df) <- c("rider_type", "bike_type", "count")
+
+ggplot(con_df, aes(x = bike_type, y = rider_type, fill = count)) +
+  geom_tile(color = "black") +
+  scale_fill_gradient(low = "gray", high = "darkblue") +
+  labs(title = "Bike Usage by Rider Type",
+       x = "Bike Type",
+       y = "Rider Type",
+       fill = "Number of Rides") +
+  theme_minimal()
+```
+
+```{r}
+#
+```

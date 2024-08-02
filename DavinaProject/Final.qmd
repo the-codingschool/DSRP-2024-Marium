@@ -1,0 +1,8 @@
+Title\
+● Name\
+● Abstract\
+● Background, Research Question & Hypotheses\
+● Figures with descriptions\
+○ All your interesting findings/results\
+● Discussion/Conclusions/Further Directions/Next Steps\
+● Link to git repo (mention your project folder and data folders)

@@ -103,7 +103,7 @@ num_data <- data_frame(rideable_type = date_time$rideable_type,
                        end_lat = date_time$end_lat,
                        end_lng = date_time$end_lng,
                        member_casual = times$member_casual,
-                       trip_time = date_time$trip_time)
+                       trip_time = round(date_time$trip_time, digits = 0))
 
 #head(num_data)
 
@@ -165,6 +165,49 @@ numsfive <- seq(from = 0, to = 1500, by = 5)
 #print(numsfive)
 ```
 
+Picking trip range to limit the training/ testing data
+
+```{r}
+#trip duration range
+head(num_data)
+trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
+trip_time_num <- na.omit(trip_time_num)
+  
+hist(trip_time_num,
+     main = "Distribution of Trip Duration",  # Title
+     xlab = "Trip Duration (in minutes)",          # X-axis label
+     ylab = "Frequency",                    # Y-axis label
+     col = "skyblue",                       # Color of the bars
+     border = "black",                      # Border color of the bars
+     breaks = 300)
+```
+
+```{r}
+#trip duration range
+#head(num_data)
+#trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 100, as.numeric(num_data$trip_time), NA)
+#trip_time_num <- na.omit(trip_time_num)
+
+compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
+  distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
+}
+
+trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+
+trip_distance <- na.omit(trip_distance)
+  
+hist(trip_distance,
+     main = "Distribution of Trip Distances",  # Title
+     xlab = "Trip Distance (in kilometers)",          # X-axis label
+     ylab = "Frequency",                    # Y-axis label
+     col = "skyblue",                       # Color of the bars
+     border = "black",                      # Border color of the bars
+     breaks = 300)
+```
+
+#ran up to here
+
 ```{r}
 conv_data <- select(num_data, 7:10, 13:26)
 
@@ -176,6 +219,11 @@ compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
   distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
 }
 
+trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+
+trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
+
 final_data <- data_frame(
   sun = conv_data$sun,
   sat = conv_data$sat,
@@ -186,18 +234,16 @@ final_data <- data_frame(
   start_station_id_hash = conv_data$start_station_id_hashed,
   end_station_id_hash = conv_data$start_station_id_hashed,
   start_hour = hour(conv_data$start_timeform),
-  distance = ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 4000, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA),
+  distance = trip_distance,
   start_lon = data_original$start_lng,
   start_lat = data_original$start_lat,
   end_lat = data_original$end_lat,
   end_lon = data_original$end_lng,
-  trip_time = ifelse(round(times$trip_time, digits = 0) <= 25, round(times$trip_time, digits = 0), NA))
+  trip_time = as.numeric(trip_time_num))
 
-final_data$trip_time <- as.numeric(final_data$trip_time)
+final_data$trip_time <- as.numeric(cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE))
 
-final_data$trip_time <- cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE)
-
-final_data$trip_time <- as.numeric(final_data$trip_time)
+#final_data$trip_time <- as.numeric(final_data$trip_time)
 
 final_data <- na.omit(final_data)
 
@@ -246,28 +292,17 @@ Fitting the model
 
 ```{r}
 train_data
+test_data
 ```
 
 ```{r}
-knn_model <- knn(train = train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')], 
-                 test = test_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon','classic_bike')], 
-                 cl = train_data$trip_time, 
-                 k = 28)
-#highest: 0.5843237 
+knn_model <- knn(train = train_data[, c('casual', 'member', 'end_lon', 'start_lon')], 
+                 test = test_data[, c('casual', 'member', 'end_lon', 'start_lon')], 
+                cl = train_data$trip_time, 
+                k = 25)
+#highest: 0.5901666
 #c('distance','start_lon','start_lat','end_lat','end_lon', 'classic_bike')
-#up to 25km only
-#k=17
-
-#c('distance','start_lon','start_lat','end_lat','end_lon','start_station_id_hash', 'end_station_id_hash', 'start_hour', 'classic_bike', 'weekend')
-#k=6
-
-#'start_station_id_hash', 'end_station_id_hash','classic_bike','start_hour'
-
-#, 'start_hour', 'classic_bike', 'weekend'
-
-#'member','classic_bike'
-#'start_hour', 'classic_bike'
-#'start_station_id_hash', 'end_station_id_hash',
+#k=28
 ```
 
 Testing the model

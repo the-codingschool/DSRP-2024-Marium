@@ -192,8 +192,11 @@ compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
   distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
 }
 
-trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
-trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 3000, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+#trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+
+#trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+#trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
 
 trip_distance <- na.omit(trip_distance)
   
@@ -296,13 +299,15 @@ test_data
 ```
 
 ```{r}
-knn_model <- knn(train = train_data[, c('casual', 'member', 'end_lon', 'start_lon')], 
-                 test = test_data[, c('casual', 'member', 'end_lon', 'start_lon')], 
+knn_model <- knn(train = train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')], 
+                 test = test_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')], 
                 cl = train_data$trip_time, 
-                k = 25)
-#highest: 0.5901666
-#c('distance','start_lon','start_lat','end_lat','end_lon', 'classic_bike')
-#k=28
+                k = 21)
+#highest: 0.5904073 
+# c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')
+#k=21
+
+#'start_lat','end_lat',
 ```
 
 Testing the model
@@ -325,13 +330,13 @@ cat('\nAccuracy:', accuracy, '\n')
 
 ```{r}
 # Define the range of k-values to test
-k_values <- seq(1, 25)
+k_values <- seq(10,40)
 accuracy <- numeric(length(k_values))
 
 # Prepare training and test sets
-train_x <- train_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+train_x <- train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
 train_y <- train_data$trip_time
-test_x <- test_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+test_x <- test_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
 test_y <- test_data$trip_time
 
 # Evaluate KNN model for each k value
@@ -360,13 +365,13 @@ ggplot(accuracy_df, aes(x = k, y = accuracy)) +
 
 ```{r}
 # Define the range of k-values to test
-k_values <- seq(25, 50)
+k_values <- c(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80)
 accuracy <- numeric(length(k_values))
 
 # Prepare training and test sets
-train_x <- train_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+train_x <- train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
 train_y <- train_data$trip_time
-test_x <- test_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+test_x <- test_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
 test_y <- test_data$trip_time
 
 # Evaluate KNN model for each k value
@@ -395,13 +400,13 @@ ggplot(accuracy_df, aes(x = k, y = accuracy)) +
 
 ```{r}
 # Define the range of k-values to test
-k_values <- seq(50, 100)
+k_values <- seq(10, 30)
 accuracy <- numeric(length(k_values))
 
 # Prepare training and test sets
-train_x <- train_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+train_x <- train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
 train_y <- train_data$trip_time
-test_x <- test_data[, c('distance','start_lon', 'start_lat', 'end_lat', 'end_lon', 'classic_bike')]
+test_x <- test_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
 test_y <- test_data$trip_time
 
 # Evaluate KNN model for each k value
@@ -426,4 +431,31 @@ ggplot(accuracy_df, aes(x = k, y = accuracy)) +
        x = "K-value",
        y = "Accuracy") +
   theme_minimal()
+```
+
+```{r}
+#turn confusion matrix into dataframe
+confusion_matrix_df <- as.data.frame(confusion_matrix)
+confusion_matrix_df <- rename(confusion_matrix_df, actual = Var1)
+confusion_matrix_df <- rename(confusion_matrix_df, prediction = pred)
+confusion_matrix_df <- rename(confusion_matrix_df, frequency = Freq)
+confusion_matrix_df
+
+#identifying the correct predictions
+correct_pred <- filter(confusion_matrix_df, actual == prediction)
+
+#tile plot
+ggplot(confusion_matrix_df, aes(x=actual, y=prediction, fill=frequency)) +
+  geom_tile() + theme_bw() + coord_equal() +
+  scale_fill_distiller(palette="Greens", direction=1) +
+  guides(fill=F) + 
+  labs(title = "KNN Model Results: Predicted vs. Real Duration Ranges") + 
+  labs(x = "Actual Duration Range") +
+  labs(y = "Predicted Duration Range") +
+  geom_text(aes(label=frequency), color="black", size=3) +
+  geom_tile(data=correct_pred, aes(x=actual, y=prediction), fill=NA, color="black", size=.5)
+```
+
+```{r}
+confusion_matrix
 ```

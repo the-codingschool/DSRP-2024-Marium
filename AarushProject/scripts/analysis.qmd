@@ -1,0 +1,442 @@
+```{r}
+library(dplyr)
+library(janitor)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(maps)
+library(ggmap)
+library(sp)
+library(leaflet)
+library(geosphere)
+library(rpart)
+library(randomForest)
+library(class)
+library(caret) 
+library(caTools)
+library(downloader)
+library(FNN)
+library(readxl)
+library(sf)
+library(RColorBrewer)
+library(corrplot)
+
+#read in dataset
+file_name <- list.files("data")
+data <- read.csv("/Users/reddy/Documents/DSRP-Dataset/bluebikes/AarushProject/data/202406-bluebikes-tripdata.csv")
+head(data)
+dim(data)
+str(data)
+```
+
+```{r}
+data_clean <- drop_na(remove_empty(data, c("rows", "cols")))
+dim(data_clean)
+
+data_time_sep <- data_clean %>%
+  select(ride_id,started_at, ended_at, member_casual) %>%
+  separate(started_at, into = c("start_date", "start_time"), sep = " ") %>%
+  separate(ended_at, into = c("end_date", "end_time"), sep = " ") %>%
+  mutate(started_at = data_clean$started_at,ended_at = data_clean$ended_at) 
+
+data_time_sep <- data_time_sep %>%
+  mutate(started_at = ymd_hms(started_at),
+         ended_at = ymd_hms(ended_at),
+         ride_time_mins = as.numeric(difftime(ended_at, started_at, units = "mins")))
+
+data_distance <- data_clean |>
+  select(ride_id, member_casual, rideable_type, start_lat, start_lng, end_lat, end_lng, started_at, ended_at, end_station_name) |>
+  mutate(distance_km = distHaversine(cbind(start_lng, start_lat), cbind(end_lng, end_lat)) / 1000)
+```
+
+analysis between the bike type and distance
+
+```{r}
+data_distance$distance_category <- cut(data_distance$distance_km, breaks = c(-Inf, 1, 5, Inf), labels = c("short", "medium", "long"))
+
+
+con_table_bike <- table(data_distance$distance_category, data_distance$rideable_type)
+chi_squared_test <- chisq.test(con_table_bike)
+print(chi_squared_test)
+#shows a correlation
+
+anova_model <- aov(distance_km ~ rideable_type, data = data_distance)
+summary(anova_model)
+```
+
+```{r}
+interaction_model <- lm(distance_km ~ rideable_type * member_casual, data = data_distance)
+
+summary(interaction_model)
+
+```
+
+j
+
+```{r}
+cor_matrix <- cor(data_distance[, sapply(data_distance, is.numeric)])
+corrplot(cor_matrix, method = "circle")
+```
+
+```{r}
+
+data_distance$date <- as.Date(data_distance$started_at)
+data_distance$hour <- hour(data_distance$started_at)
+
+# Aggregate data by date
+daily_rides <- data_distance %>% group_by(date) %>% summarize(total_rides = n(), avg_distance = mean(distance_km))
+
+# Plot total rides over time
+ggplot(daily_rides, aes(x = date, y = total_rides)) +
+  geom_line() +
+  labs(title = "Total Rides Over Time", x = "Date", y = "Total Rides")
+
+# Plot average distance over time
+ggplot(daily_rides, aes(x = date, y = avg_distance)) +
+  geom_line() +
+  labs(title = "Average Distance Over Time", x = "Date", y = "Average Distance (km)")
+```
+
+```{r}
+data_distance <- data_distance %>%
+  mutate(
+    rideable_type = as.numeric(factor(rideable_type)),
+    member_casual = as.numeric(factor(member_casual))
+  )
+
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+
+set.seed(42)
+sample_size <- 10000
+sample_data <- data_distance[sample(nrow(data_distance), sample_size), ]
+head(sample_data)
+split <- sample.split(sample_data$distance_km, SplitRatio = 0.8)
+train_data <- subset(sample_data, split == TRUE)
+test_data <- subset(sample_data, split == FALSE)
+
+train_features <- train_data[, c("rideable_type", "member_casual")]
+test_features <- test_data[, c("rideable_type", "member_casual")]
+train_labels <- train_data$distance_km
+test_labels <- test_data$distance_km
+
+knn_model <- knn(
+  train = train_features,
+  test = test_features,
+  cl = train_labels,
+  k = 5
+)
+
+predictions <- as.numeric(knn_model)
+mean_squared_error <- mean((predictions - test_labels)^2)
+r2_score <- 1 - (sum((predictions - test_labels)^2) / sum((mean(train_labels) - test_labels)^2))
+
+cat("Mean Squared Error:", mean_squared_error, "\n")
+cat("R2 Score:", r2_score, "\n")
+```
+
+```{r}
+rideable_type_new <- as.numeric(factor("electric_bike", levels = c("classic_bike", "electric_bike")))
+member_casual_new <- as.numeric(factor("member", levels = c("casual", "member")))
+
+
+new_data <- data.frame(
+  rideable_type = rideable_type_new,
+  member_casual = member_casual_new,
+)
+
+prediction <- knn(
+  train = train_features,
+  test = new_data,
+  cl = train_labels,
+  k = 5
+)
+cat("Predicted distance for the new bike ride is:", as.numeric(prediction), "km\n")
+
+
+
+```
+
+```{r}
+
+data_distance <- data_distance %>%
+  mutate(
+    rideable_type = as.numeric(factor(rideable_type)),
+    member_casual = as.numeric(factor(member_casual)),
+    start_station_name = as.numeric(factor(start_station_name)),
+    distance_category = as.factor(distance_category),
+    hour = as.numeric(format(as.POSIXct(started_at), format="%H")),
+    day_of_week = as.numeric(format(as.POSIXct(started_at), format="%u"))
+  )
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+train_features_normalized <- as.data.frame(lapply(train_features, normalize))
+test_features_normalized <- as.data.frame(lapply(test_features, normalize))
+
+# Optimize the number of neighbors (k) if needed
+best_k <- 5  # Example value; you should tune this value
+
+# Train KNN model
+knn_model <- knn(
+  train = train_features_normalized,
+  test = test_features_normalized,
+  cl = train_labels,
+  k = best_k
+)
+
+# Convert predictions to numeric
+predictions <- as.numeric(knn_model)
+
+# Define bins and labels
+bins <- quantile(train_labels, probs = c(0, 0.33, 0.66, 1))
+labels <- c("short", "medium", "long")
+
+# Convert continuous values to categories
+actual_categories <- cut(test_labels, breaks = bins, labels = labels, include.lowest = TRUE)
+predicted_categories <- cut(predictions, breaks = bins, labels = labels, include.lowest = TRUE)
+
+# Confusion matrix
+confusion_matrix <- table(Predicted = predicted_categories, Actual = actual_categories)
+
+# Print confusion matrix and accuracy
+print("Confusion Matrix:")
+print(confusion_matrix)
+
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
+```
+
+knn model with bike type, member type, distance category, hour of day, day of the week
+
+```{r}
+data_distance <- data_distance %>%
+  mutate(
+    rideable_type = as.numeric(factor(rideable_type)),
+    member_casual = as.numeric(factor(member_casual)),
+    distance_category = as.factor(distance_category),
+    hour = as.numeric(format(as.POSIXct(started_at), format="%H")),
+    day_of_week = as.numeric(format(as.POSIXct(started_at), format="%u"))
+  )
+
+# Ensure all necessary columns are selected for modeling
+model_data <- data_distance %>%
+  select(rideable_type, member_casual, hour, day_of_week, distance_category)
+
+# Split the data into training and testing sets
+set.seed(42)
+trainIndex <- createDataPartition(model_data$distance_category, p = 0.8, list = FALSE)
+train <- model_data[trainIndex, ]
+test <- model_data[-trainIndex, ]
+
+# Scale the data for k-NN
+preProcessValues <- preProcess(train, method = c("center", "scale"))
+train_scaled <- predict(preProcessValues, train)
+test_scaled <- predict(preProcessValues, test)
+
+# Train k-NN model and make predictions
+set.seed(42)
+k <- 5
+test_pred <- knn(
+  train = train_scaled[, -ncol(train_scaled)], 
+  test = test_scaled[, -ncol(test_scaled)],
+  cl = train_scaled$distance_category, 
+  k = k
+)
+
+# Create confusion matrix
+actual <- test$distance_category
+cm <- confusionMatrix(test_pred, actual)
+
+# Print confusion matrix and accuracy
+print(cm)
+accuracy <- cm$overall["Accuracy"]
+print(paste("Accuracy:", round(accuracy, 2)))
+```
+
+```{r}
+dim(data_distance)
+```
+
+![]()
+
+d
+
+```{r}
+baseline_cm <- confusionMatrix(test_pred, test$distance_category)
+baseline_accuracy <- baseline_cm$overall["Accuracy"]
+
+# Initialize a vector to store importance scores
+importance_scores <- numeric(ncol(train_scaled) - 1)
+names(importance_scores) <- colnames(train_scaled)[-ncol(train_scaled)]
+
+# Permutation importance
+set.seed(42)
+for (i in 1:length(importance_scores)) {
+  # Shuffle the values of the feature
+  permuted_test <- test_scaled
+  permuted_test[, i] <- sample(permuted_test[, i])
+  
+  # Predict with the permuted data
+  permuted_pred <- knn(
+    train = train_scaled[, -ncol(train_scaled)], 
+    test = permuted_test[, -ncol(permuted_test)],
+    cl = train_scaled$distance_category, 
+    k = k
+  )
+  
+  # Calculate accuracy with permuted data
+  permuted_cm <- confusionMatrix(permuted_pred, test$distance_category)
+  permuted_accuracy <- permuted_cm$overall["Accuracy"]
+  
+  # Calculate importance as the drop in accuracy
+  importance_scores[i] <- baseline_accuracy - permuted_accuracy
+}
+
+# Create a data frame for plotting
+importance_df <- data.frame(
+  Feature = names(importance_scores),
+  Importance = as.numeric(importance_scores)
+)
+
+# Plot feature importance
+ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Feature Importance (Permutation)", x = "Feature", y = "Importance") +
+  theme_minimal()
+```
+
+```{r}
+
+str(train_scaled)
+```
+
+graph of k value vs accuracy
+
+```{r}
+# Prepare the data
+set.seed(42)
+index <- createDataPartition(data_distance$distance_category, p = 0.8, list = FALSE)
+train_data <- data_distance[index, ]
+test_data <- data_distance[-index, ]
+
+# Extract features and labels
+train_features <- train_data[, c("rideable_type", "member_casual", "hour", "day_of_week")]
+train_labels <- train_data$distance_category
+test_features <- test_data[, c("rideable_type", "member_casual", "hour", "day_of_week")]
+test_labels <- test_data$distance_category
+
+# Standardize the features
+preProcValues <- preProcess(train_features, method = c("center", "scale"))
+train_features_scaled <- predict(preProcValues, train_features)
+test_features_scaled <- predict(preProcValues, test_features)
+
+# Function to calculate accuracy for different k values
+accuracy_vs_k <- function(k_values, train_features, train_labels, test_features, test_labels) {
+  accuracies <- c()
+  for (k in k_values) {
+    test_pred <- knn(train = train_features, 
+                     test = test_features, 
+                     cl = train_labels, 
+                     k = k)
+    cm <- confusionMatrix(test_pred, test_labels)
+    accuracies <- c(accuracies, cm$overall["Accuracy"])
+  }
+  return(data.frame(k = k_values, accuracy = accuracies))
+}
+
+# Define the range of k values
+k_values <- 72:100
+
+# Calculate accuracies
+accuracy_results <- accuracy_vs_k(k_values, train_features_scaled, train_labels, test_features_scaled, test_labels)
+
+# Plot the results
+ggplot(accuracy_results, aes(x = k, y = accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy vs. k Value for k-NN Model",
+       x = "k Value",
+       y = "Accuracy") +
+  theme_minimal()
+```
+
+knn model with bike type, distance category, hour of day, day of the week
+
+```{r}
+data_distance <- data_distance %>%
+  mutate(
+    rideable_type = as.numeric(factor(rideable_type)),
+    distance_category = as.factor(distance_category),
+    hour = as.numeric(format(as.POSIXct(started_at), format="%H")),
+    day_of_week = as.numeric(format(as.POSIXct(started_at), format="%u"))
+  )
+
+# Ensure all necessary columns are selected for modeling
+model_data <- data_distance %>%
+  select(rideable_type, hour, day_of_week, distance_category)
+
+# Split the data into training and testing sets
+set.seed(42)
+trainIndex <- createDataPartition(model_data$distance_category, p = 0.8, list = FALSE)
+train <- model_data[trainIndex, ]
+test <- model_data[-trainIndex, ]
+
+# Ensure factor levels are the same
+train$distance_category <- factor(train$distance_category, levels = levels(model_data$distance_category))
+test$distance_category <- factor(test$distance_category, levels = levels(model_data$distance_category))
+
+# Scale the data for k-NN
+preProcessValues <- preProcess(train[, -ncol(train)], method = c("center", "scale"))
+train_scaled <- predict(preProcessValues, train[, -ncol(train)])
+test_scaled <- predict(preProcessValues, test[, -ncol(test)])
+
+# Add the distance_category column back after scaling
+train_scaled$distance_category <- train$distance_category
+test_scaled$distance_category <- test$distance_category
+
+# Train k-NN model and make predictions
+set.seed(42)
+k <- 5
+test_pred <- knn(
+  train = train_scaled[, -ncol(train_scaled)], 
+  test = test_scaled[, -ncol(test_scaled)],
+  cl = train_scaled$distance_category, 
+  k = k
+)
+
+# Ensure factor levels of predictions match actuals
+test_pred <- factor(test_pred, levels = levels(test$distance_category))
+
+# Create confusion matrix
+actual <- test$distance_category
+cm <- confusionMatrix(test_pred, actual)
+
+# Print confusion matrix and accuracy
+print(cm)
+accuracy <- cm$overall["Accuracy"]
+print(paste("Accuracy:", round(accuracy, 2)))
+```
+
+```{r}
+cm_table <- as.data.frame(cm$table)
+colnames(cm_table) <- c("Prediction", "Reference", "Frequency")
+
+# Plot confusion matrix heatmap with values and accuracy
+ggplot(data = cm_table, aes(x = Reference, y = Prediction, fill = Frequency)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "skyblue", high = "blue", trans = "log") +
+  geom_text(aes(label = Frequency), color = "white", size = 4) +
+  labs(title = paste("Confusion Matrix Heatmap (Accuracy:", round(accuracy, 2), ")"),
+       x = "Actual",
+       y = "Predicted") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+```

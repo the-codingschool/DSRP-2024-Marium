@@ -1,5 +1,6 @@
 Read in dataset
 
+
 ```{r}
 library(dplyr)
 library(janitor)
@@ -21,14 +22,18 @@ dim(data)
 str(data)
 ```
 
+
 Taking out NAs
+
 
 ```{r}
 data_clean <- drop_na(remove_empty(data, c("rows", "cols")))
 dim(data_clean)
 ```
 
+
 made smaller data set and separated date and time
+
 
 ```{r}
 data_time_sep <- data_clean %>%
@@ -40,7 +45,9 @@ data_time_sep <- data_clean %>%
 head(data_time_sep)
 ```
 
+
 add new column to data_time_sep called ride_time_mins
+
 
 ```{r}
 
@@ -63,7 +70,9 @@ boston_districts <- st_read("/Users/reddy/Documents/DSRP-Dataset/bluebikes/data/
 print(boston_districts)
 ```
 
+
 map of latitude and longitude for a sample of 50 bike's starting position
+
 
 ```{r}
 # Define a color palette
@@ -104,3 +113,4 @@ map <- map %>%
 # Print the map
 map
 ```
+

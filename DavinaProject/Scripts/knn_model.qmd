@@ -1,0 +1,492 @@
+BlueBikes KNN Model
+
+Loading packages
+
+```{r}
+#install.packages("tidyverse")
+library(tidyr) 
+library(dplyr) 
+library(ggplot2)
+#install.packages("tmap", repos = c("https://r-tmap.r-universe.dev",
+                                  # "https://cloud.r-project.org"))
+library(sf)
+library(terra)
+library(dplyr)
+library(tmap)    
+library(leaflet)
+
+library(caTools)
+library(readr)
+library(downloader)
+library(caTools)
+library(FNN)
+library(readxl)
+
+library(lubridate)
+
+library(digest)
+
+#install.packages("factoextra")
+library(factoextra)
+
+#install.packages("bigmemory")
+library(bigmemory)
+
+#install.packages("geosphere")
+library(geosphere)
+```
+
+Loading dataset
+
+```{r}
+# read in dataset
+file_name <- list.files("data")
+data_original <- read.csv(paste0("data/",file_name))
+data_original
+data_original <- na.omit(data_original)
+```
+
+Add column: total trip time
+
+```{r}
+times <- mutate(data_original, trip_time = difftime(ended_at,started_at, units = "mins"))
+times
+```
+
+Creating new datasets with relevant columns only
+
+```{r}
+# all relevant columns
+rel_data <- select(times,"ride_id","rideable_type","trip_time","start_station_id", "end_station_id")
+
+# type of bike and trip time
+bike_time <- select(times,"rideable_type","trip_time")
+
+# type of bike and stations
+bike_station <- select(times,"rideable_type","start_station_id", "end_station_id")
+
+# trip time and stations
+time_station <- select(times,"trip_time","start_station_id", "end_station_id")
+
+#locations
+start_locations <- select(times,"start_station_id","start_lat","start_lng")
+
+date_time <- separate(data = times, col="started_at", into=c("start_date","start_time"), sep=" ")
+date_time <- separate(data = date_time, col="ended_at", into=c("end_date","end_time"), sep=" ")
+head(date_time)
+
+dates <- data.frame(start_date = as.Date(date_time$start_date), end_date = as.Date(date_time$end_date)) 
+
+days <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time)          
+days
+
+#head(rel_data)
+#bike_time
+#head(bike_station)
+#head(time_station)
+#head(start_locations)
+```
+
+Converting all data into numerical values!
+
+```{r}
+#date_time
+#days
+num_data <- data_frame(rideable_type = date_time$rideable_type, 
+                       start_time = date_time$start_time, 
+                       start_weekday = days$start_weekday, 
+                       end_weekday = days$end_weekday, 
+                       start_station_id = date_time$start_station_id, 
+                       end_station_id = date_time$end_station_id,
+                       start_lat = date_time$start_lat,
+                       start_lng = date_time$start_lng,
+                       end_lat = date_time$end_lat,
+                       end_lng = date_time$end_lng,
+                       member_casual = times$member_casual,
+                       trip_time = round(date_time$trip_time, digits = 0))
+
+#head(num_data)
+
+#making rideable type numerical
+num_data <- mutate(num_data, classic_bike = ifelse(rideable_type=="classic_bike", 1, 0),
+         electric_bike = ifelse(rideable_type=="electric_bike", 1, 0))
+
+#making start_weekday numerical
+num_data <- mutate(num_data, sun = ifelse(start_weekday=="Sunday", 1, 0),
+                   mon = ifelse(start_weekday=="Monday", 1, 0),
+                   tue = ifelse(start_weekday=="Tuesday", 1, 0),
+                   wed = ifelse(start_weekday=="Wednesday", 1, 0),
+                   thu = ifelse(start_weekday=="Thursday", 1, 0),
+                   fri = ifelse(start_weekday=="Friday", 1, 0),
+                   sat = ifelse(start_weekday=="Saturday", 1, 0))
+
+#making member_casual numerical
+num_data <- mutate(num_data, member = ifelse(member_casual=="member", 1, 0),
+                   casual = ifelse(member_casual=="casual", 1, 0))
+
+#making start_time numerical
+num_data <- mutate(num_data, start_timeform=hms(num_data$start_time))
+
+#making start_station_id numerical
+#id_to_crc32 <- function(id) {return(as.numeric(crc32(id)))}
+
+#num_data <- mutate(num_data, start_station_id_hashed =
+                     #sapply(num_data$start_station_id, id_to_crc32))
+
+id_to_crc32 <- function(id) {
+  hash_value <- digest(id, algo = "crc32", serialize = FALSE)
+  return(as.numeric(paste0("0x", hash_value)))
+}
+
+# Apply the function to hash the start_station_id column
+num_data <- mutate(num_data, start_station_id_hashed = sapply(start_station_id, id_to_crc32))
+
+# Apply the function to hash the start_station_id column
+num_data <- mutate(num_data, end_station_id_hashed = sapply(end_station_id, id_to_crc32))
+```
+
+Making final dataset
+
+```{r}
+#making time ranges
+start <- 0
+end <- 1500
+interval <- 5
+
+ranges <- sapply(seq(start, end - interval, by = interval), function(x) {
+  paste(x, x + interval, sep = "-")
+})
+
+#print(ranges)
+
+#defining the time ranges
+numsfive <- seq(from = 0, to = 1500, by = 5)
+
+#print(numsfive)
+```
+
+Picking trip range to limit the training/ testing data
+
+```{r}
+#trip duration range
+head(num_data)
+trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
+trip_time_num <- na.omit(trip_time_num)
+  
+hist(trip_time_num,
+     main = "Distribution of Trip Duration",  # Title
+     xlab = "Trip Duration (in minutes)",          # X-axis label
+     ylab = "Frequency",                    # Y-axis label
+     col = "skyblue",                       # Color of the bars
+     border = "black",                      # Border color of the bars
+     breaks = 300)
+```
+
+```{r}
+#trip duration range
+#head(num_data)
+#trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 100, as.numeric(num_data$trip_time), NA)
+#trip_time_num <- na.omit(trip_time_num)
+
+compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
+  distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
+}
+
+trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 1500, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+#trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+
+#trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+#trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+
+trip_distance <- na.omit(trip_distance)
+  
+hist(trip_distance,
+     main = "Distribution of Trip Distances",  # Title
+     xlab = "Trip Distance (in kilometers)",          # X-axis label
+     ylab = "Frequency",                    # Y-axis label
+     col = "skyblue",                       # Color of the bars
+     border = "black",                      # Border color of the bars
+     breaks = 300)
+
+summary(trip_distance)
+```
+
+#ran up to here
+
+```{r}
+conv_data <- select(num_data, 7:10, 13:26)
+
+data_original %>% 
+  mutate(started_at=parse_date_time(started_at, "Ymd HMS"),
+    start_hour=hour(started_at))
+
+compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
+  distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
+}
+
+trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 1500, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+#trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+
+trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
+
+final_data <- data_frame(
+  sun = conv_data$sun,
+  sat = conv_data$sat,
+  classic_bike = conv_data$classic_bike,
+  weekend = ifelse(conv_data$sat == 1 | conv_data$sun == 1, 1, 0),
+  member = conv_data$member,
+  casual = conv_data$casual,
+  start_station_id_hash = conv_data$start_station_id_hashed,
+  end_station_id_hash = conv_data$start_station_id_hashed,
+  start_hour = hour(conv_data$start_timeform),
+  distance = trip_distance,
+  start_lon = data_original$start_lng,
+  start_lat = data_original$start_lat,
+  end_lat = data_original$end_lat,
+  end_lon = data_original$end_lng,
+  trip_time = as.numeric(trip_time_num))
+
+final_data$trip_time <- as.numeric(cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE))
+
+#final_data$trip_time <- as.numeric(final_data$trip_time)
+
+final_data <- na.omit(final_data)
+
+final_data
+```
+
+```{r}
+conv_data
+conv_data <- na.omit(conv_data)
+trial_data <- data_frame(
+  sun = conv_data$sun,
+  sat = conv_data$sat,
+  classic_bike = conv_data$classic_bike,
+  weekend = ifelse(conv_data$sat == 1 | conv_data$sun == 1, 1, 0),
+  member = conv_data$member,
+  casual = conv_data$casual,
+  start_station_id_hash = conv_data$start_station_id_hashed,
+  end_station_id_hash = conv_data$start_station_id_hashed,
+  start_hour = hour(conv_data$start_timeform),
+  distance = mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat),
+  start_lon = data_original$start_lng,
+  start_lat = data_original$start_lat,
+  end_lat = data_original$end_lat,
+  end_lon = data_original$end_lng,
+  trip_time = as.numeric(num_data$trip_time))
+trial_data
+
+mean(trial_data$trip_time)
+
+trial_data_two <- filter(trial_data, trip_time <= 30)
+trial_data_two
+mean(trial_data_two$distance)
+summary(trial_data_two$distance)
+```
+
+KNN Model
+
+Dataset
+
+```{r}
+head(final_data)
+unique(final_data$trip_time)
+max(final_data$distance)
+mean(final_data$distance)
+summary(final_data)
+```
+
+Splitting the Data
+
+```{r}
+set.seed(123)
+
+split <- sample.split(final_data$trip_time, SplitRatio = 0.8)
+train_data <- subset(final_data, split == TRUE)
+test_data <- subset(final_data, split == FALSE)
+```
+
+Chosen Variables:
+
+-   from PCA:
+
+    -   end station: end_station_id_hash
+
+    -   start station: start_station_id_hash
+
+    -   casual or member rider: casual
+
+-   from plots:
+
+    -   start time: start_hour
+
+    -   weekend: sat, sun
+
+Fitting the model
+
+```{r}
+train_data
+test_data
+```
+
+```{r}
+knn_model <- knn(train = train_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')], 
+                 test = test_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')], 
+                cl = train_data$trip_time, 
+                k = 33)
+#highest: 0.5904073 
+# c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')
+#k=21
+
+#'start_lat','end_lat',
+```
+
+Testing the model
+
+```{r}
+pred <- knn_model
+```
+
+Evaluating the model
+
+```{r}
+confusion_matrix <- table(test_data$trip_time, pred)
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+
+# Print the evaluation metrics
+cat('Confusion Matrix:\n')
+print(confusion_matrix)
+cat('\nAccuracy:', accuracy, '\n')
+```
+
+```{r}
+# Define the range of k-values to test
+k_values <- seq(15,40)
+accuracy <- numeric(length(k_values))
+
+# Prepare training and test sets
+train_x <- train_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')]
+train_y <- train_data$trip_time
+test_x <- test_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')]
+test_y <- test_data$trip_time
+
+# Evaluate KNN model for each k value
+for (i in seq_along(k_values)) {
+  k <- k_values[i]
+  
+  # Train the KNN model and make predictions
+  predictions <- knn(train = train_x, test = test_x, cl = train_y, k = k)
+  
+  # Calculate accuracy (assuming exact match is required)
+  accuracy[i] <- mean(predictions == test_y)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(k = k_values, accuracy = accuracy)
+
+# Plot accuracy vs k-value
+ggplot(accuracy_df, aes(x = k, y = accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy of KNN Model vs K-value",
+       x = "K-value",
+       y = "Accuracy") +
+  theme_minimal()
+```
+
+```{r}
+# Define the range of k-values to test
+k_values <- c(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80)
+accuracy <- numeric(length(k_values))
+
+# Prepare training and test sets
+train_x <- train_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')]
+train_y <- train_data$trip_time
+test_x <- test_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')]
+test_y <- test_data$trip_time
+
+# Evaluate KNN model for each k value
+for (i in seq_along(k_values)) {
+  k <- k_values[i]
+  
+  # Train the KNN model and make predictions
+  predictions <- knn(train = train_x, test = test_x, cl = train_y, k = k)
+  
+  # Calculate accuracy (assuming exact match is required)
+  accuracy[i] <- mean(predictions == test_y)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(k = k_values, accuracy = accuracy)
+
+# Plot accuracy vs k-value
+ggplot(accuracy_df, aes(x = k, y = accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy of KNN Model vs K-value",
+       x = "K-value",
+       y = "Accuracy") +
+  theme_minimal()
+```
+
+```{r}
+# Define the range of k-values to test
+k_values <- seq(10, 30)
+accuracy <- numeric(length(k_values))
+
+# Prepare training and test sets
+train_x <- train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
+train_y <- train_data$trip_time
+test_x <- test_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
+test_y <- test_data$trip_time
+
+# Evaluate KNN model for each k value
+for (i in seq_along(k_values)) {
+  k <- k_values[i]
+  
+  # Train the KNN model and make predictions
+  predictions <- knn(train = train_x, test = test_x, cl = train_y, k = k)
+  
+  # Calculate accuracy (assuming exact match is required)
+  accuracy[i] <- mean(predictions == test_y)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(k = k_values, accuracy = accuracy)
+
+# Plot accuracy vs k-value
+ggplot(accuracy_df, aes(x = k, y = accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Accuracy of KNN Model vs K-value",
+       x = "K-value",
+       y = "Accuracy") +
+  theme_minimal()
+```
+
+```{r}
+#turn confusion matrix into dataframe
+confusion_matrix_df <- as.data.frame(confusion_matrix)
+confusion_matrix_df <- rename(confusion_matrix_df, actual = Var1)
+confusion_matrix_df <- rename(confusion_matrix_df, prediction = pred)
+confusion_matrix_df <- rename(confusion_matrix_df, frequency = Freq)
+confusion_matrix_df
+
+#identifying the correct predictions
+correct_pred <- filter(confusion_matrix_df, actual == prediction)
+
+#tile plot
+ggplot(confusion_matrix_df, aes(x=actual, y=prediction, fill=frequency)) +
+  geom_tile() + theme_bw() + coord_equal() +
+  scale_fill_distiller(palette="Greens", direction=1) +
+  guides(fill=F) + 
+  labs(title = "KNN Model Results: Predicted vs. Real Duration Ranges") + 
+  labs(x = "Actual Duration Range") +
+  labs(y = "Predicted Duration Range") +
+  geom_text(aes(label=frequency), color="black", size=3) +
+  geom_tile(data=correct_pred, aes(x=actual, y=prediction), fill=NA, color="black", size=.5)
+```
+
+```{r}
+confusion_matrix
+```

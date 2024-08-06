@@ -1,6 +1,6 @@
-BlueBikes Plots
+BlueBikes Principal Component Analysis
 
-Installing packages
+Loading packages
 
 ```{r}
 #install.packages("tidyverse")
@@ -12,8 +12,6 @@ library(ggplot2)
 library(sf)
 library(terra)
 library(dplyr)
-#library(spData)
-#library(spDataLarge)
 library(tmap)    
 library(leaflet)
 
@@ -27,6 +25,9 @@ library(readxl)
 library(lubridate)
 
 library(digest)
+
+#install.packages("factoextra")
+library(factoextra)
 ```
 
 Loading dataset
@@ -67,92 +68,7 @@ start_locations <- select(times,"start_station_id","start_lat","start_lng")
 #bike_time
 #head(bike_station)
 #head(time_station)
-head(start_locations)
-```
-
-Plots
-
-Scatter Plot: Average Time of Trip Vs. Type of Bike
-
-```{r}
-classical_times <- filter(bike_time, bike_time$rideable_type=="classic_bike")
-#classical_times
-mean_classical <- mean(classical_times$trip_time)
-mean_classical
-
-electrical_times <- filter(bike_time, bike_time$rideable_type=="electric_bike")
-#electrical_times
-mean_electrical <- mean(electrical_times$trip_time)
-mean_electrical
-
-bike_mean_times <- data.frame(bike_type=c("classical", "electrical"), avg_time=c(mean_classical, mean_electrical))
-bike_mean_times
-
-ggplot(data = bike_mean_times, aes(x = bike_type, y = avg_time)) +
-  geom_bar(stat = "identity") +
-  xlab('Type of Bike') +
-  ylab('Average Trip Time') +
-  ggtitle('Average Time of Trip Vs.Type of Bike')
-
-ggplot(data = bike_time, aes(x = rideable_type, y = trip_time)) + 
-  geom_bar(stat = "summary", fun = "mean") +
-    labs(x = "Type of Bike", y = "Average Trip Duration", title = "Average Trip Duration by Type of Bike")
-```
-
-Average Trip Time Vs. Starting Station
-
-```{r}
-ggplot(data = time_station, aes(x = start_station_id, y = trip_time)) + 
-  geom_bar(stat = "summary", fun = "mean")
-```
-
-Map of Starting Locations
-
-```{r}
-start_locations <- select(times,"start_station_id","start_lat","start_lng")
-
-start_loc <- st_as_sf(start_locations, coords = c("start_lng", "start_lat"))
-
-ggplot(start_loc) + 
-  geom_sf(aes(color="red"))
-
-```
-
-Map of Ending Locations
-
-```{r}
-end_locations <- select(times,"end_station_id","end_lat","end_lng")
-
-end_locations <- na.omit(end_locations[1:3])
-end_locations
-
-end_loc <- st_as_sf(end_locations, coords = c("end_lng", "end_lat"))
-
-ggplot(end_loc) + 
-  geom_sf(aes(color="red"))
-```
-
-Days of the Week
-
-```{r}
-date_time <- separate(data = times, col="started_at", into=c("start_date","start_time"), sep=" ")
-date_time <- separate(data = date_time, col="ended_at", into=c("end_date","end_time"), sep=" ")
-head(date_time)
-
-dates <- data.frame(start_date = as.Date(date_time$start_date), end_date = as.Date(date_time$end_date)) 
-
-days <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time)          
-days
-```
-
-Day of Week Vs. Average Trip Time
-
-```{r}
-days$start_weekday <- factor(days$start_weekday, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
-
-ggplot(data = days, aes(x = start_weekday, y = trip_time)) + 
-  geom_bar(stat = "summary", fun = "mean") +
-  labs(x = "Day of the Week", y = "Average Trip Duration", title = "Average Trip Duration by Day of the Week")
+#head(start_locations)
 ```
 
 Converting all data into numerical values!
@@ -170,7 +86,7 @@ num_data <- data_frame(rideable_type = date_time$rideable_type,
                        start_lng = date_time$start_lng,
                        end_lat = date_time$end_lat,
                        end_lng = date_time$end_lng,
-                       member_casual = times$member_casual,
+                       member_casual = date_time$member_casual,
                        trip_time = date_time$trip_time)
 
 #head(num_data)
@@ -213,10 +129,6 @@ num_data <- mutate(num_data, start_station_id_hashed = sapply(start_station_id, 
 num_data <- mutate(num_data, end_station_id_hashed = sapply(end_station_id, id_to_crc32))
 ```
 
-```{r}
-conv_data
-```
-
 Making final dataset
 
 ```{r}
@@ -226,46 +138,74 @@ data_original %>%
   mutate(started_at=parse_date_time(started_at, "Ymd HMS"),
     start_hour=hour(started_at))
 
+compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
+  distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
+}
+
+trip_distance <- ifelse(mapply(compute_distance, num_data$start_lng, num_data$start_lat, num_data$end_lng, num_data$end_lat) <= 1500, mapply(compute_distance, num_data$start_lng, num_data$start_lat, num_data$end_lng, num_data$end_lat), NA)
+#trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+
+trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
+
 final_data <- data_frame(
-  start_lat = conv_data$start_lat,
-  start_lng = conv_data$start_lng,
-  end_lat = conv_data$end_lat,
-  end_lng = conv_data$end_lng,
-  classic_bike = conv_data$classic_bike,
-  electric_bike = conv_data$electric_bike,
   sun = conv_data$sun,
-  mon = conv_data$mon,
-  tue = conv_data$tue,
-  wed = conv_data$wed,
-  thu = conv_data$thu,
-  fri = conv_data$fri,
   sat = conv_data$sat,
+  classic_bike = conv_data$classic_bike,
+  weekend = ifelse(conv_data$sat == 1 | conv_data$sun == 1, 1, 0),
   member = conv_data$member,
   casual = conv_data$casual,
   start_station_id_hash = conv_data$start_station_id_hashed,
   end_station_id_hash = conv_data$start_station_id_hashed,
-  start_hour = hour(conv_data$start_timeform))
+  start_hour = hour(conv_data$start_timeform),
+  distance = trip_distance,
+  start_lon = num_data$start_lng,
+  start_lat = num_data$start_lat,
+  end_lat = num_data$end_lat,
+  end_lon = num_data$end_lng,
+  trip_time = as.numeric(trip_time_num))
+
+final_data$trip_time <- as.numeric(cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE))
+
+#final_data$trip_time <- as.numeric(final_data$trip_time)
 
 final_data <- na.omit(final_data)
 
 final_data
 ```
 
-Checking the hashed values
+Principal Component Analysis
 
 ```{r}
-filter(num_data, start_station_id=="M32013")
-#hashed: 3812739417	
-filter(num_data, end_station_id=="M32013")
-#hashed: 3812739417
-```
+data_normalized <- scale(final_data)
 
-Start Hour vs. Average Trip Time
+data_pca <- prcomp(data_normalized, scale. = TRUE)
+summary(data_pca)
+```
 
 ```{r}
-final_data$start_hour <- factor(final_data$start_hour, levels = as.character(0:23))
+fviz_eig(data_pca, addlabels = TRUE)
 
-ggplot(data = final_data, aes(x = start_hour, y = trip_time)) + 
-  stat_summary(geom = "bar", fun = "mean") +
-  labs(x = "Hour of the Day", y = "Average Trip Duration", title = "Average Trip Duration by Hour of the Day")
+fviz_pca_var(data_pca, col.var = "black", repel = TRUE)
+
+fviz_cos2(data_pca, choice = "var", axes = 1:2)
+
+fviz_pca_var(data_pca, col.var="cos2",
+            gradient.cols = c("red", "orange", "green"),
+            repel = TRUE,
+            title = "Factor Map")
+
+#fviz_pca_ind(res.pca, col.ind="cos2")
+#variables in green = independent variables with most impact on dataset
+#variables in orange = independent variables with some impact on dataset
+#variables in black = independent variables with low impact on dataset
 ```
+
+Spree Plot:
+
+-   should use 5 components in KNN model
+
+Factor Map:
+
+-   most represented in data: casual, member, weekend, start_lon, end_lon
+
+-   most related to trip time: casual, distance, start_hour

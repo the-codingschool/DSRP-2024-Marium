@@ -1,6 +1,6 @@
-BlueBikes Plots
+BlueBikes Linear Regression
 
-Installing packages
+Loading packages
 
 ```{r}
 #install.packages("tidyverse")
@@ -12,8 +12,6 @@ library(ggplot2)
 library(sf)
 library(terra)
 library(dplyr)
-#library(spData)
-#library(spDataLarge)
 library(tmap)    
 library(leaflet)
 
@@ -27,6 +25,12 @@ library(readxl)
 library(lubridate)
 
 library(digest)
+
+#install.packages("factoextra")
+library(factoextra)
+
+install.packages("bigmemory")
+library(bigmemory)
 ```
 
 Loading dataset
@@ -67,92 +71,7 @@ start_locations <- select(times,"start_station_id","start_lat","start_lng")
 #bike_time
 #head(bike_station)
 #head(time_station)
-head(start_locations)
-```
-
-Plots
-
-Scatter Plot: Average Time of Trip Vs. Type of Bike
-
-```{r}
-classical_times <- filter(bike_time, bike_time$rideable_type=="classic_bike")
-#classical_times
-mean_classical <- mean(classical_times$trip_time)
-mean_classical
-
-electrical_times <- filter(bike_time, bike_time$rideable_type=="electric_bike")
-#electrical_times
-mean_electrical <- mean(electrical_times$trip_time)
-mean_electrical
-
-bike_mean_times <- data.frame(bike_type=c("classical", "electrical"), avg_time=c(mean_classical, mean_electrical))
-bike_mean_times
-
-ggplot(data = bike_mean_times, aes(x = bike_type, y = avg_time)) +
-  geom_bar(stat = "identity") +
-  xlab('Type of Bike') +
-  ylab('Average Trip Time') +
-  ggtitle('Average Time of Trip Vs.Type of Bike')
-
-ggplot(data = bike_time, aes(x = rideable_type, y = trip_time)) + 
-  geom_bar(stat = "summary", fun = "mean") +
-    labs(x = "Type of Bike", y = "Average Trip Duration", title = "Average Trip Duration by Type of Bike")
-```
-
-Average Trip Time Vs. Starting Station
-
-```{r}
-ggplot(data = time_station, aes(x = start_station_id, y = trip_time)) + 
-  geom_bar(stat = "summary", fun = "mean")
-```
-
-Map of Starting Locations
-
-```{r}
-start_locations <- select(times,"start_station_id","start_lat","start_lng")
-
-start_loc <- st_as_sf(start_locations, coords = c("start_lng", "start_lat"))
-
-ggplot(start_loc) + 
-  geom_sf(aes(color="red"))
-
-```
-
-Map of Ending Locations
-
-```{r}
-end_locations <- select(times,"end_station_id","end_lat","end_lng")
-
-end_locations <- na.omit(end_locations[1:3])
-end_locations
-
-end_loc <- st_as_sf(end_locations, coords = c("end_lng", "end_lat"))
-
-ggplot(end_loc) + 
-  geom_sf(aes(color="red"))
-```
-
-Days of the Week
-
-```{r}
-date_time <- separate(data = times, col="started_at", into=c("start_date","start_time"), sep=" ")
-date_time <- separate(data = date_time, col="ended_at", into=c("end_date","end_time"), sep=" ")
-head(date_time)
-
-dates <- data.frame(start_date = as.Date(date_time$start_date), end_date = as.Date(date_time$end_date)) 
-
-days <- data.frame(start_weekday = weekdays(dates$start_date), end_weekday = weekdays(dates$end_date), trip_time= times$trip_time)          
-days
-```
-
-Day of Week Vs. Average Trip Time
-
-```{r}
-days$start_weekday <- factor(days$start_weekday, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
-
-ggplot(data = days, aes(x = start_weekday, y = trip_time)) + 
-  geom_bar(stat = "summary", fun = "mean") +
-  labs(x = "Day of the Week", y = "Average Trip Duration", title = "Average Trip Duration by Day of the Week")
+#head(start_locations)
 ```
 
 Converting all data into numerical values!
@@ -213,11 +132,25 @@ num_data <- mutate(num_data, start_station_id_hashed = sapply(start_station_id, 
 num_data <- mutate(num_data, end_station_id_hashed = sapply(end_station_id, id_to_crc32))
 ```
 
-```{r}
-conv_data
-```
-
 Making final dataset
+
+```{r}
+#making time ranges
+start <- 0
+end <- 1500
+interval <- 5
+
+ranges <- sapply(seq(start, end - interval, by = interval), function(x) {
+  paste(x, x + interval, sep = "-")
+})
+
+#print(ranges)
+
+#defining the time ranges
+numsfive <- seq(from = 0, to = 1500, by = 5)
+
+#print(numsfive)
+```
 
 ```{r}
 conv_data <- select(num_data, 7:10, 13:26)
@@ -227,45 +160,76 @@ data_original %>%
     start_hour=hour(started_at))
 
 final_data <- data_frame(
-  start_lat = conv_data$start_lat,
-  start_lng = conv_data$start_lng,
-  end_lat = conv_data$end_lat,
-  end_lng = conv_data$end_lng,
-  classic_bike = conv_data$classic_bike,
-  electric_bike = conv_data$electric_bike,
   sun = conv_data$sun,
-  mon = conv_data$mon,
-  tue = conv_data$tue,
-  wed = conv_data$wed,
-  thu = conv_data$thu,
-  fri = conv_data$fri,
   sat = conv_data$sat,
+  classic_bike = conv_data$classic_bike,
+  weekend = ifelse(conv_data$sat == 1 | conv_data$sun == 1, 1, 0),
   member = conv_data$member,
   casual = conv_data$casual,
   start_station_id_hash = conv_data$start_station_id_hashed,
   end_station_id_hash = conv_data$start_station_id_hashed,
-  start_hour = hour(conv_data$start_timeform))
+  start_hour = hour(conv_data$start_timeform),
+  trip_time = ifelse(round(times$trip_time, digits = 0) <= 30, round(times$trip_time, digits = 0), NA))
+
+final_data$trip_time <- as.numeric(final_data$trip_time)
+
+final_data$trip_time <- cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE)
+
+final_data$trip_time <- as.numeric(final_data$trip_time)
 
 final_data <- na.omit(final_data)
 
 final_data
 ```
 
-Checking the hashed values
+KNN Model
+
+Dataset
 
 ```{r}
-filter(num_data, start_station_id=="M32013")
-#hashed: 3812739417	
-filter(num_data, end_station_id=="M32013")
-#hashed: 3812739417
+head(final_data)
+unique(final_data$trip_time)
 ```
 
-Start Hour vs. Average Trip Time
+Splitting the Data
 
 ```{r}
-final_data$start_hour <- factor(final_data$start_hour, levels = as.character(0:23))
+set.seed(123)
 
-ggplot(data = final_data, aes(x = start_hour, y = trip_time)) + 
-  stat_summary(geom = "bar", fun = "mean") +
-  labs(x = "Hour of the Day", y = "Average Trip Duration", title = "Average Trip Duration by Hour of the Day")
+split <- sample.split(final_data$trip_time, SplitRatio = 0.8)
+train_data <- subset(final_data, split == TRUE)
+test_data <- subset(final_data, split == FALSE)
+```
+
+Fitting the Model
+
+```{r}
+lr_model <- lm(trip_time ~ start_station_id_hash+start_hour, 
+data = train_data)
+```
+
+Testing the Model
+
+```{r}
+pred <- predict(lr_model, newdata = test_data)
+```
+
+Evaluating the Model
+
+```{r}
+mse <- mean((test_data$trip_time - pred)^2, na.rm = TRUE) 
+mae <- mean(abs(test_data$trip_time - pred), na.rm = TRUE) 
+r_squared <- summary(lr_model)$r.squared
+mse
+mae
+r_squared
+```
+
+```{r}
+ggplot(test_data, aes(x = trip_time, y = pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Real vs Predicted Values",
+       x = "True Trip Time",
+       y = "Predicted Trip Time")
 ```

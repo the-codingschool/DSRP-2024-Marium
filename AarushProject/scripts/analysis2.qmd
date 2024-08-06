@@ -1,0 +1,261 @@
+```{r}
+library(dplyr)
+library(janitor)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(maps)
+library(ggmap)
+library(sp)
+library(leaflet)
+library(geosphere)
+library(rpart)
+library(randomForest)
+library(class)
+library(caret) 
+library(caTools)
+library(downloader)
+library(FNN)
+library(readxl)
+library(sf)
+library(RColorBrewer)
+library(corrplot)
+
+
+#read in dataset
+file_name <- list.files("data")
+data <- read.csv("/Users/reddy/Documents/DSRP-Dataset/bluebikes/AarushProject/data/202406-bluebikes-tripdata.csv")
+head(data)
+dim(data)
+str(data)
+
+data_clean <- drop_na(remove_empty(data, c("rows", "cols")))
+dim(data_clean)
+
+data_time_sep <- data_clean %>%
+  select(ride_id,started_at, ended_at, member_casual) %>%
+  separate(started_at, into = c("start_date", "start_time"), sep = " ") %>%
+  separate(ended_at, into = c("end_date", "end_time"), sep = " ") %>%
+  mutate(started_at = data_clean$started_at,ended_at = data_clean$ended_at) 
+
+data_time_sep <- data_time_sep %>%
+  mutate(started_at = ymd_hms(started_at),
+         ended_at = ymd_hms(ended_at),
+         ride_time_mins = as.numeric(difftime(ended_at, started_at, units = "mins")))
+
+data_distance <- data_clean |>
+  select(ride_id, member_casual, rideable_type, start_lat, start_lng, end_lat, end_lng, started_at, ended_at,start_station_name ,end_station_name) |>
+  mutate(distance_km = distHaversine(cbind(start_lng, start_lat), cbind(end_lng, end_lat)) / 1000)
+head(data_distance)
+```
+
+g
+
+```{r}
+data_distance$distance_category <- cut(data_distance$distance_km, 
+                                        breaks = c(-Inf, 2, 5, Inf), 
+                                        labels = c("short", "medium", "long"))
+head(data_distance)
+```
+
+```{r}
+data_distance <- data_distance %>%
+  mutate(
+    rideable_type = as.numeric(factor(rideable_type)),
+    member_casual = as.numeric(factor(member_casual)),
+    start_station_name = as.numeric(factor(start_station_name)),
+    distance_category = as.factor(distance_category),
+    hour = as.numeric(format(as.POSIXct(started_at), format="%H")),
+    day_of_week = as.numeric(format(as.POSIXct(started_at), format="%u"))
+  )
+head(data_distance)
+```
+
+```{r}
+set.seed(42)
+sample_size <- 10000
+data_sample <- data_distance[sample(nrow(data_distance), sample_size), ]
+
+split <- sample.split(data_sample$distance_category, SplitRatio = 0.8)
+train_data <- subset(data_sample, split == TRUE)
+test_data <- subset(data_sample, split == FALSE)
+
+train_data$distance_category <- as.factor(train_data$distance_category)
+test_data$distance_category <- as.factor(test_data$distance_category)
+
+rf_model <- randomForest(distance_category ~ rideable_type + member_casual + hour + day_of_week, data = train_data, ntree = 500, mtry = 2)
+
+predictions <- predict(rf_model, newdata = test_data)
+
+predictions <- factor(predictions, levels = levels(test_data$distance_category))
+
+conf_matrix <- confusionMatrix(predictions, test_data$distance_category)
+print(conf_matrix)
+
+accuracy <- conf_matrix$overall["Accuracy"]
+print(paste("Accuracy:", round(accuracy, 2)))
+```
+
+```{r}
+set.seed(42)
+sample_size <- 10000
+data_sample <- data_distance[sample(nrow(data_distance), sample_size), ]
+
+split <- sample.split(data_sample$distance_category, SplitRatio = 0.8)
+train_data <- subset(data_sample, split == TRUE)
+test_data <- subset(data_sample, split == FALSE)
+
+# Train Random Forest model with hyperparameter tuning
+tune_grid <- expand.grid(.mtry = c(2, 3, 4))
+control <- trainControl(method = "cv", number = 5, search = "grid")
+
+rf_model <- train(distance_category ~ rideable_type + member_casual + hour + day_of_week,
+                  data = train_data,
+                  method = "rf",
+                  tuneGrid = tune_grid,
+                  trControl = control,
+                  ntree = 500)
+
+rf_model2 <- train(distance_km ~ rideable_type + member_casual + hour + day_of_week,
+                  data = train_data,
+                  method = "rf",
+                  tuneGrid = tune_grid,
+                  trControl = control,
+                  ntree = 500)
+
+predictions <- predict(rf_model, newdata = test_data)
+
+predictions <- factor(predictions, levels = levels(test_data$distance_category))
+
+conf_matrix <- confusionMatrix(predictions, test_data$distance_category)
+print(conf_matrix)
+
+accuracy <- conf_matrix$overall["Accuracy"]
+print(paste("Accuracy:", round(accuracy, 2)))
+
+print(rf_model$finalModel)
+```
+
+```{r}
+sample_data <- data.frame(
+  rideable_type = 1, 
+  member_casual = 2,         
+  start_lat = 42.37338,   
+  start_lng = -71.11107,  
+  hour = 15,
+  day_of_week = 4    
+)
+
+sample_features <- sample_data[, c("rideable_type", "member_casual", "day_of_week", "hour")]
+
+# Predict the distance
+predicted_distance_km <- predict(rf_model2, newdata = sample_features)
+predicted_distance_km <- as.numeric(predicted_distance_km[1])
+print(predicted_distance_km)
+
+scaled_radius = predicted_distance_km * 1000
+
+map <- leaflet(sample_data) %>%
+  addTiles() %>%
+  addMarkers(lng = ~start_lng, lat = ~start_lat, popup = "Start Station") %>%
+  addCircles(
+    lng = ~start_lng,
+    lat = ~start_lat,
+    radius = scaled_radius ,  # Fixed radius in meters
+    color = "blue",
+    fillOpacity = 0.2,
+    stroke = FALSE,
+    popup = paste("Predicted distance: ", round(predicted_distance_km, 2), "km")
+  )
+
+map
+```
+
+```{r}
+importance_df <- as.data.frame(rf_model$finalModel$importance)
+importance_df$Feature <- rownames(importance_df)
+colnames(importance_df) <- c("Importance", "Feature")
+
+# Plot feature importance
+ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Feature Importance", x = "Feature", y = "Importance") +
+  theme_minimal()
+```
+
+```{r}
+# Create a data frame for predictions and actual values
+pred_vs_actual <- data.frame(
+  Actual = test_data$distance_category,
+  Predicted = predictions
+)
+
+# Plot prediction distribution
+ggplot(pred_vs_actual, aes(x = Actual, fill = Predicted)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Prediction Distribution vs Actual Values", x = "Actual Class", y = "Count") +
+  theme_minimal()
+```
+
+```{r}
+conf_matrix_df <- as.data.frame(as.table(conf_matrix$table))
+colnames(conf_matrix_df) <- c("Prediction", "Reference", "Count")
+
+# Plot heatmap
+ggplot(conf_matrix_df, aes(x = Prediction, y = Reference, fill = Count)) +
+  geom_tile() +
+  geom_text(aes(label = Count), color = "gray", size = 5) +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Confusion Matrix Heatmap", x = "Predicted Class", y = "Actual Class") +
+  theme_minimal()
+```
+
+```{r}
+library(caret)
+set.seed(42)
+sample_size <- 10000
+data_sample <- data_distance[sample(nrow(data_distance), sample_size), ]
+split <- sample.split(data_sample$distance_category, SplitRatio = 0.8)
+train_data <- subset(data_sample, split == TRUE)
+test_data <- subset(data_sample, split == FALSE)
+
+# Define different training sizes
+training_sizes <- seq(0.1, 1, by = 0.1)  # from 10% to 100% of the training data
+results <- data.frame(TrainingSize = numeric(), Accuracy = numeric())
+
+for (size in training_sizes) {
+  # Sample training data
+  sample_train_size <- floor(size * nrow(train_data))
+  train_subset <- train_data[sample(nrow(train_data), sample_train_size), ]
+  
+  # Train Random Forest model
+  rf_model <- train(distance_category ~ rideable_type + member_casual + hour + day_of_week,
+                    data = train_subset,
+                    method = "rf",
+                    tuneGrid = tune_grid,
+                    trControl = control,
+                    ntree = 500)
+  
+  # Predict on test data
+  predictions <- predict(rf_model, newdata = test_data)
+  predictions <- factor(predictions, levels = levels(test_data$distance_category))
+  
+  # Compute confusion matrix and accuracy
+  conf_matrix <- confusionMatrix(predictions, test_data$distance_category)
+  accuracy <- conf_matrix$overall["Accuracy"]
+  
+  # Record results
+  results <- rbind(results, data.frame(TrainingSize = size, Accuracy = accuracy))
+}
+
+# Plot learning curve
+ggplot(results, aes(x = TrainingSize, y = Accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Learning Curve",
+       x = "Training Size (Proportion of Total Data)",
+       y = "Accuracy") +
+  theme_minimal()
+```

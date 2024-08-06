@@ -192,7 +192,7 @@ compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
   distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
 }
 
-trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 3000, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 1500, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
 #trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
 
 #trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
@@ -207,6 +207,8 @@ hist(trip_distance,
      col = "skyblue",                       # Color of the bars
      border = "black",                      # Border color of the bars
      breaks = 300)
+
+summary(trip_distance)
 ```
 
 #ran up to here
@@ -222,8 +224,8 @@ compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
   distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
 }
 
-trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
-trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 1500, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+#trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
 
 trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
 
@@ -251,6 +253,35 @@ final_data$trip_time <- as.numeric(cut(final_data$trip_time, breaks = numsfive, 
 final_data <- na.omit(final_data)
 
 final_data
+```
+
+```{r}
+conv_data
+conv_data <- na.omit(conv_data)
+trial_data <- data_frame(
+  sun = conv_data$sun,
+  sat = conv_data$sat,
+  classic_bike = conv_data$classic_bike,
+  weekend = ifelse(conv_data$sat == 1 | conv_data$sun == 1, 1, 0),
+  member = conv_data$member,
+  casual = conv_data$casual,
+  start_station_id_hash = conv_data$start_station_id_hashed,
+  end_station_id_hash = conv_data$start_station_id_hashed,
+  start_hour = hour(conv_data$start_timeform),
+  distance = mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat),
+  start_lon = data_original$start_lng,
+  start_lat = data_original$start_lat,
+  end_lat = data_original$end_lat,
+  end_lon = data_original$end_lng,
+  trip_time = as.numeric(num_data$trip_time))
+trial_data
+
+mean(trial_data$trip_time)
+
+trial_data_two <- filter(trial_data, trip_time <= 30)
+trial_data_two
+mean(trial_data_two$distance)
+summary(trial_data_two$distance)
 ```
 
 KNN Model
@@ -299,10 +330,10 @@ test_data
 ```
 
 ```{r}
-knn_model <- knn(train = train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')], 
-                 test = test_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')], 
+knn_model <- knn(train = train_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')], 
+                 test = test_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')], 
                 cl = train_data$trip_time, 
-                k = 21)
+                k = 33)
 #highest: 0.5904073 
 # c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')
 #k=21
@@ -330,13 +361,13 @@ cat('\nAccuracy:', accuracy, '\n')
 
 ```{r}
 # Define the range of k-values to test
-k_values <- seq(10,40)
+k_values <- seq(15,40)
 accuracy <- numeric(length(k_values))
 
 # Prepare training and test sets
-train_x <- train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
+train_x <- train_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')]
 train_y <- train_data$trip_time
-test_x <- test_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
+test_x <- test_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')]
 test_y <- test_data$trip_time
 
 # Evaluate KNN model for each k value
@@ -369,9 +400,9 @@ k_values <- c(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80)
 accuracy <- numeric(length(k_values))
 
 # Prepare training and test sets
-train_x <- train_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
+train_x <- train_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')]
 train_y <- train_data$trip_time
-test_x <- test_data[, c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')]
+test_x <- test_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')]
 test_y <- test_data$trip_time
 
 # Evaluate KNN model for each k value

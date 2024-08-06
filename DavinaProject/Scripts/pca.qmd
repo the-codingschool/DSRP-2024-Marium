@@ -86,7 +86,7 @@ num_data <- data_frame(rideable_type = date_time$rideable_type,
                        start_lng = date_time$start_lng,
                        end_lat = date_time$end_lat,
                        end_lng = date_time$end_lng,
-                       member_casual = times$member_casual,
+                       member_casual = date_time$member_casual,
                        trip_time = date_time$trip_time)
 
 #head(num_data)
@@ -142,8 +142,8 @@ compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
   distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
 }
 
-trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
-trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
+trip_distance <- ifelse(mapply(compute_distance, num_data$start_lng, num_data$start_lat, num_data$end_lng, num_data$end_lat) <= 1500, mapply(compute_distance, num_data$start_lng, num_data$start_lat, num_data$end_lng, num_data$end_lat), NA)
+#trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
 
 trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
 
@@ -154,13 +154,15 @@ final_data <- data_frame(
   weekend = ifelse(conv_data$sat == 1 | conv_data$sun == 1, 1, 0),
   member = conv_data$member,
   casual = conv_data$casual,
+  start_station_id_hash = conv_data$start_station_id_hashed,
+  end_station_id_hash = conv_data$start_station_id_hashed,
   start_hour = hour(conv_data$start_timeform),
   distance = trip_distance,
-  start_lon = data_original$start_lng,
-  start_lat = data_original$start_lat,
-  end_lat = data_original$end_lat,
-  end_lon = data_original$end_lng,
-  duration = as.numeric(trip_time_num))
+  start_lon = num_data$start_lng,
+  start_lat = num_data$start_lat,
+  end_lat = num_data$end_lat,
+  end_lon = num_data$end_lng,
+  trip_time = as.numeric(trip_time_num))
 
 final_data$trip_time <- as.numeric(cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE))
 
@@ -200,7 +202,7 @@ fviz_pca_var(data_pca, col.var="cos2",
 
 Spree Plot:
 
--    should use 5 to 6 components in KNN model
+-   should use 5 components in KNN model
 
 Factor Map:
 

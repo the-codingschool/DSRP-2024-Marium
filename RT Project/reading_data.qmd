@@ -1,0 +1,45 @@
+```{r}
+library(tidyverse)
+library(janitor)
+library(dplyr)
+library(ggplot2)
+
+getwd()
+```
+
+
+```{r}
+fileName <- "/Users/renatetoldo/Marium_Project/Data/202406-bluebikes-tripdata.csv"
+file.exists(fileName)
+
+data <- read.csv(fileName)
+head(data)
+```
+
+```{r}
+summary(data$start_station_name)
+num_var <- suppressWarnings(as.numeric(data$start_station_name))
+print(num_var)
+#data$start_station_name <- as.numeric(data$start_station_name)
+head(data)
+
+data %>% 
+  group_by(start_station_name) %>%
+  summarise(count = n())
+```
+
+```{r}
+# Create a mapping from station names to unique numbers
+unique_stations <- unique(data$start_station_name)
+station_mapping <- setNames(seq_along(unique_stations), unique_stations)
+
+# Print the mapping
+print(station_mapping)
+
+# Convert the station names column to numbers based on the mapping
+data$station_names_numeric <- station_mapping[data$start_station_name]
+
+# Print the modified dataframe
+head(data)
+```
+

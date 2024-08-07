@@ -155,6 +155,12 @@ ggplot(data = days, aes(x = start_weekday, y = trip_time)) +
   labs(x = "Day of the Week", y = "Average Trip Duration", title = "Average Trip Duration by Day of the Week")
 ```
 
+```{r}
+ggplot(data = final_data, aes(x = distance, y = trip_time)) + 
+  geom_point(stat = "summary", fun = "mean") +
+  labs(x = "Day of the Week", y = "Average Trip Duration", title = "Average Trip Duration by Day of the Week")
+```
+
 Converting all data into numerical values!
 
 ```{r}

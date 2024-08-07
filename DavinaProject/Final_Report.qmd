@@ -9,10 +9,81 @@ Title\
 
 when loading file: save final data as rds file and load that
 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#install.packages("tidyverse")
+library(tidyr) 
+library(dplyr) 
+library(ggplot2)
+#install.packages("tmap", repos = c("https://r-tmap.r-universe.dev",
+                                  # "https://cloud.r-project.org"))
+library(sf)
+library(terra)
+library(dplyr)
+library(tmap)    
+library(leaflet)
+
+library(caTools)
+library(readr)
+library(downloader)
+library(caTools)
+library(FNN)
+library(readxl)
+
+library(lubridate)
+
+library(digest)
+
+#install.packages("factoextra")
+library(factoextra)
+
+#install.packages("bigmemory")
+library(bigmemory)
+
+#install.packages("geosphere")
+library(geosphere)
+
+load(file = "final_data.Rdata")
+```
+
 **Abstract**
 
-The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: distance, starting latitude, starting longitude, ending latitude, ending longitude, and classic bike. The KNN model achieved the highest accuracy of 59.04% when k=21 and was most accurate for trip durations under 15 minutes.
+The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024 that were 30 minutes in duration and under 1500 kilometers in distance between the starting and ending station, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: status of the rider’s membership, type of bike, starting longitude, ending longitude, and distance between the starting station and ending station. The KNN model achieved the highest accuracy of 63.52% when k=26.
 
 **Background**
 
-BlueBikes Boston (formerly Hubway) is a bikeshare system consisting of over 3,000 bikes in 400+ stations across Boston, Brookline, Cambridge, Somerville and Everett. In 2023, there were an estimated 2.9 million trips completed by this system. Although it is a vital mode of transportation for many commuters, BlueBikes Boston does not have a feature to predict the duration of a trip. Therefore, this study aims to address this issue by identifying the factors that impact trip duration and developing a KNN model to predict trip duration. The initial hypothesis of this study is that
+BlueBikes Boston (formerly Hubway) is a bikeshare system consisting of over 3,000 bikes in 400+ stations across Boston, Brookline, Cambridge, Somerville and Everett. In 2023, there were an estimated 2.9 million trips completed by this system. Although it is a vital mode of transportation for many commuters, BlueBikes Boston does not have a feature to predict the duration of a trip. Therefore, this study aims to address this issue by identifying the factors that impact trip duration and developing a KNN model to predict trip duration. The initial hypothesis of this study is that the starting hour of the trip and the distance between the starting and ending locations will be the highest contributors to trip duration.
+
+Figure 1
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+echo = F
+final_data$start_hour <- factor(final_data$start_hour, levels = as.character(0:23))
+
+ggplot(data = final_data, aes(x = start_hour, y = trip_time)) + 
+  stat_summary(geom = "bar", fun = "mean") +
+  labs(x = "Hour of the Day", y = "Average Trip Duration", title = "Average Trip Duration by Hour of the Day")
+```
+
+Figure 2
+
+(distance graph)
+
+To better understand which variables had the most influence on trip duration, a principal component analysis was conducted.
+
+Figure 3
+
+(scree plot)
+
+The scree plot plateaus at the 6th variable. Therefore, selecting five variables for training a KNN model would be most effective.
+
+Figure 4
+
+(factor map)
+
+In the factor map, the arrows close to "trip_duration" represent variables that are closely related to it. For example \_\_\_\_\_\_\_. In addition, the longest arrows represent variables that are highly represented in the dataset and can serve to
+
+**Results**
+
+**Discussion**
+
+**Conclusion**

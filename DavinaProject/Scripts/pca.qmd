@@ -28,6 +28,12 @@ library(digest)
 
 #install.packages("factoextra")
 library(factoextra)
+
+#install.packages("bigmemory")
+library(bigmemory)
+
+#install.packages("geosphere")
+library(geosphere)
 ```
 
 Loading dataset
@@ -162,9 +168,9 @@ final_data <- data_frame(
   start_lat = num_data$start_lat,
   end_lat = num_data$end_lat,
   end_lon = num_data$end_lng,
-  trip_time = as.numeric(trip_time_num))
+  trip_duration = as.numeric(trip_time_num))
 
-final_data$trip_time <- as.numeric(cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE))
+final_data$trip_duration <- as.numeric(cut(final_data$trip_duration, breaks = numsfive, labels = ranges, include.lowest = TRUE))
 
 #final_data$trip_time <- as.numeric(final_data$trip_time)
 

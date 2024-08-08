@@ -56,9 +56,31 @@ ul.task-list li input[type="checkbox"] {
 ● Link to git repo (mention your project folder and data folders)</p>
 <p>when loading file: save final data as rds file and load that</p>
 <p><strong>Abstract</strong></p>
-<p>The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: distance, starting latitude, starting longitude, ending latitude, ending longitude, and classic bike. The KNN model achieved the highest accuracy of 59.04% when k=21 and was most accurate for trip durations under 15 minutes.</p>
+<p>The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024 that were 30 minutes in duration and under 1500 kilometers in distance between the starting and ending station, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: status of the rider’s membership, type of bike, starting longitude, ending longitude, and distance between the starting station and ending station. The KNN model achieved the highest accuracy of 63.52% when k=26.</p>
 <p><strong>Background</strong></p>
-<p>BlueBikes Boston (formerly Hubway) is a bikeshare system consisting of over 3,000 bikes in 400+ stations across Boston, Brookline, Cambridge, Somerville and Everett. In 2023, there were an estimated 2.9 million trips completed by this system. Although it is a vital mode of transportation for many commuters, BlueBikes Boston does not have a feature to predict the duration of a trip. Therefore, this study aims to address this issue by identifying the factors that impact trip duration and developing a KNN model to predict trip duration. The initial hypothesis of this study is that</p>
+<p>BlueBikes Boston (formerly Hubway) is a bikeshare system consisting of over 3,000 bikes in 400+ stations across Boston, Brookline, Cambridge, Somerville and Everett. In 2023, there were an estimated 2.9 million trips completed by this system. Although it is a vital mode of transportation for many commuters, BlueBikes Boston does not have a feature to predict the duration of a trip. Therefore, this study aims to address this issue by identifying the factors that impact trip duration and developing a KNN model to predict trip duration. The initial hypothesis of this study is that the starting hour of the trip and the distance between the starting and ending locations will be the highest contributors to trip duration.</p>
+<p>Figure 1</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Report_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Figure 2</p>
+<p>(distance graph)</p>
+<p>To better understand which variables had the most influence on trip duration, a principal component analysis was conducted.</p>
+<p>Figure 3</p>
+<p>(scree plot)</p>
+<p>The scree plot plateaus at the 6th variable. Therefore, selecting five variables for training a KNN model would be most effective.</p>
+<p>Figure 4</p>
+<p>(factor map)</p>
+<p>In the factor map, the arrows close to “trip_duration” represent variables that are closely related to it. For example _______. In addition, the longest arrows represent variables that are highly represented in the dataset and can serve to</p>
+<p><strong>Results</strong></p>
+<p><strong>Discussion</strong></p>
+<p><strong>Conclusion</strong></p>
 
 </main>
 <!-- /main column -->

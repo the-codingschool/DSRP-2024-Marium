@@ -256,6 +256,10 @@ final_data
 ```
 
 ```{r}
+save(final_data, file = "final_data.Rdata")
+```
+
+```{r}
 conv_data
 conv_data <- na.omit(conv_data)
 trial_data <- data_frame(
@@ -361,7 +365,7 @@ cat('\nAccuracy:', accuracy, '\n')
 
 ```{r}
 # Define the range of k-values to test
-k_values <- seq(15,40)
+k_values <- seq(1,10)
 accuracy <- numeric(length(k_values))
 
 # Prepare training and test sets

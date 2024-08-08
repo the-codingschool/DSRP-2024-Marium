@@ -171,6 +171,7 @@ data_distance <- data_distance %>%
     hour = as.numeric(format(as.POSIXct(started_at), format="%H")),
     day_of_week = as.numeric(format(as.POSIXct(started_at), format="%u"))
   )
+
 normalize <- function(x) {
   return ((x - min(x)) / (max(x) - min(x)))
 }
@@ -256,10 +257,11 @@ cm <- confusionMatrix(test_pred, actual)
 print(cm)
 accuracy <- cm$overall["Accuracy"]
 print(paste("Accuracy:", round(accuracy, 2)))
+
 ```
 
 ```{r}
-dim(data_distance)
+saveRDS(test_pred, "knn_model")
 ```
 
 ![]()

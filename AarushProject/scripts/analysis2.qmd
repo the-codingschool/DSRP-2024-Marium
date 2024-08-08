@@ -54,7 +54,7 @@ g
 
 ```{r}
 data_distance$distance_category <- cut(data_distance$distance_km, 
-                                        breaks = c(-Inf, 2, 5, Inf), 
+                                        breaks = c(-Inf, 1, 5, Inf), 
                                         labels = c("short", "medium", "long"))
 head(data_distance)
 ```
@@ -72,29 +72,59 @@ data_distance <- data_distance %>%
 head(data_distance)
 ```
 
+d
+
+```{r}
+mem.maxVSize()
+library(data.table)
+data_distance <- as.data.table(data_distance)
+```
+
 ```{r}
 set.seed(42)
-sample_size <- 10000
+
+# Sample data
+sample_size <- 16384
 data_sample <- data_distance[sample(nrow(data_distance), sample_size), ]
 
+# Convert data to data.table
+data_sample <- as.data.table(data_sample)
+
+# Split data into training and testing sets
 split <- sample.split(data_sample$distance_category, SplitRatio = 0.8)
 train_data <- subset(data_sample, split == TRUE)
 test_data <- subset(data_sample, split == FALSE)
 
+# Convert distance_category to factor
 train_data$distance_category <- as.factor(train_data$distance_category)
 test_data$distance_category <- as.factor(test_data$distance_category)
 
-rf_model <- randomForest(distance_category ~ rideable_type + member_casual + hour + day_of_week, data = train_data, ntree = 500, mtry = 2)
+# Set class weights
+class_weights <- c(short = 2, medium = 3, long = 2)
 
+# Train Random Forest model with class weights for distance_category
+rf_model <- randomForest(distance_category ~ rideable_type + hour + day_of_week, data = train_data, ntree = 500, mtry = 2, classwt = class_weights)
+
+# Train another Random Forest model for distance_km
+rf_model2 <- randomForest(distance_km ~ rideable_type + hour + day_of_week, data = train_data, ntree = 500, mtry = 2)
+
+# Predict on test data
 predictions <- predict(rf_model, newdata = test_data)
 
+# Convert predictions to factor with the same levels as test_data
 predictions <- factor(predictions, levels = levels(test_data$distance_category))
 
+# Generate confusion matrix
 conf_matrix <- confusionMatrix(predictions, test_data$distance_category)
 print(conf_matrix)
 
+# Print accuracy
 accuracy <- conf_matrix$overall["Accuracy"]
 print(paste("Accuracy:", round(accuracy, 2)))
+
+# Create a data frame from the confusion matrix table
+conf_matrix_df <- as.data.frame(as.table(conf_matrix$table))
+colnames(conf_matrix_df) <- c("Prediction", "Reference", "Count")
 ```
 
 ```{r}
@@ -117,12 +147,12 @@ rf_model <- train(distance_category ~ rideable_type + member_casual + hour + day
                   trControl = control,
                   ntree = 500)
 
-rf_model2 <- train(distance_km ~ rideable_type + member_casual + hour + day_of_week,
-                  data = train_data,
-                  method = "rf",
-                  tuneGrid = tune_grid,
-                  trControl = control,
-                  ntree = 500)
+#rf_model2 <- train(distance_km ~ rideable_type + member_casual + hour + day_of_week,
+#                  data = train_data,
+#                  method = "rf",
+ #                 tuneGrid = tune_grid,
+ #                 trControl = control,
+ #                 ntree = 500)
 
 predictions <- predict(rf_model, newdata = test_data)
 
@@ -139,18 +169,18 @@ print(rf_model$finalModel)
 
 ```{r}
 sample_data <- data.frame(
-  rideable_type = 1, 
-  member_casual = 2,         
+  rideable_type = 2, 
+#  member_casual = 2,         
   start_lat = 42.37338,   
   start_lng = -71.11107,  
-  hour = 15,
+  hour = 7,
   day_of_week = 4    
 )
 
-sample_features <- sample_data[, c("rideable_type", "member_casual", "day_of_week", "hour")]
+sample_features <- sample_data[, c("rideable_type", "day_of_week", "hour")]
 
 # Predict the distance
-predicted_distance_km <- predict(rf_model2, newdata = sample_features)
+predicted_distance_km <- predict(rf_mode2l, newdata = sample_features)
 predicted_distance_km <- as.numeric(predicted_distance_km[1])
 print(predicted_distance_km)
 
@@ -173,9 +203,24 @@ map
 ```
 
 ```{r}
-importance_df <- as.data.frame(rf_model$finalModel$importance)
+importance_df <- as.data.frame(importance(rf_model))
+
+# Check the structure of the importance data frame
+print(importance_df)
+
+# If importance is a matrix, select a specific column
+if (is.matrix(importance_df)) {
+  # Assuming MeanDecreaseGini column for feature importance
+  importance_df <- importance_df[, "MeanDecreaseGini", drop = FALSE]
+}
+
+# Add Feature names
 importance_df$Feature <- rownames(importance_df)
-colnames(importance_df) <- c("Importance", "Feature")
+
+# Rename columns if necessary
+if (!"Importance" %in% colnames(importance_df)) {
+  colnames(importance_df)[1] <- "Importance"
+}
 
 # Plot feature importance
 ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
@@ -204,12 +249,17 @@ conf_matrix_df <- as.data.frame(as.table(conf_matrix$table))
 colnames(conf_matrix_df) <- c("Prediction", "Reference", "Count")
 
 # Plot heatmap
-ggplot(conf_matrix_df, aes(x = Prediction, y = Reference, fill = Count)) +
-  geom_tile() +
-  geom_text(aes(label = Count), color = "gray", size = 5) +
-  scale_fill_gradient(low = "white", high = "blue") +
-  labs(title = "Confusion Matrix Heatmap", x = "Predicted Class", y = "Actual Class") +
-  theme_minimal()
+ggplot(data = conf_matrix_df, aes(x = Reference, y = Prediction, fill = Count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "skyblue", high = "blue", trans = "log") +
+  geom_text(aes(label = Count), color = "white", size = 4) +
+  labs(title = paste("Confusion Matrix Heatmap (Accuracy:", round(accuracy, 2), ")"),
+       x = "Actual",
+       y = "Predicted") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5))
 ```
 
 ```{r}

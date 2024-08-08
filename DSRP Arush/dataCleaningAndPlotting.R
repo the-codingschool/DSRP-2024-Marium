@@ -52,11 +52,18 @@ pie(table(data$rideable_type),
     labels = paste(names(table(data$rideable_type)), "\n", table(data$rideable_type), sep = ""))
 
 
-ggplot(data,  aes(x = station_names_numeric)) +
-  geom_bar(fill = "green", color = "black") +
-  labs(title = "Amount of Bikes Starting at Each Station",
+aggregated_data <- data %>%
+  group_by(station_names_numeric) %>%
+  summarise(bike_count = n(), .groups = 'drop')
+top10_stations <- aggregated_data %>%
+  arrange(desc(bike_count)) %>%
+  head(10)
+ggplot(top10_stations, aes(x = reorder(factor(station_names_numeric), bike_count), y = bike_count)) +
+  geom_bar(stat = "identity", fill = "green", color = "black") +
+  labs(title = "Top 10 Most Common Start Stations",
        x = "Start Station Numeric",
-       y = "Amount of Bikes")
+       y = "Amount of Bikes") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 ggplot(data, aes(x = rideable_type, y = station_names_numeric)) +

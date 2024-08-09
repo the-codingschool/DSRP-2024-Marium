@@ -70,8 +70,33 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 <p>Figure 2</p>
-<p>(distance graph)</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Report_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
 <p>To better understand which variables had the most influence on trip duration, a principal component analysis was conducted.</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Importance of components:
+                          PC1    PC2    PC3    PC4    PC5    PC6     PC7    PC8
+Standard deviation     1.5473 1.4463 1.3969 1.3581 1.2843 1.0824 1.03022 1.0129
+Proportion of Variance 0.1596 0.1395 0.1301 0.1230 0.1100 0.0781 0.07076 0.0684
+Cumulative Proportion  0.1596 0.2991 0.4291 0.5521 0.6621 0.7402 0.81094 0.8793
+                           PC9   PC10    PC11    PC12      PC13      PC14
+Standard deviation     0.98946 0.8599 0.21410 0.21335 1.316e-12 8.191e-13
+Proportion of Variance 0.06527 0.0493 0.00306 0.00303 0.000e+00 0.000e+00
+Cumulative Proportion  0.94461 0.9939 0.99697 1.00000 1.000e+00 1.000e+00
+                            PC15
+Standard deviation     1.016e-13
+Proportion of Variance 0.000e+00
+Cumulative Proportion  1.000e+00</code></pre>
+</div>
+</div>
 <p>Figure 3</p>
 <p>(scree plot)</p>
 <p>The scree plot plateaus at the 6th variable. Therefore, selecting five variables for training a KNN model would be most effective.</p>
@@ -81,6 +106,7 @@ ul.task-list li input[type="checkbox"] {
 <p><strong>Results</strong></p>
 <p><strong>Discussion</strong></p>
 <p><strong>Conclusion</strong></p>
+<p>This information is useful for bikeshare</p>
 
 </main>
 <!-- /main column -->

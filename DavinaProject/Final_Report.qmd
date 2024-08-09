@@ -43,6 +43,7 @@ library(bigmemory)
 library(geosphere)
 
 load(file = "final_data.Rdata")
+load(file="pca_data.Rdata")
 ```
 
 **Abstract**
@@ -61,14 +62,28 @@ final_data$start_hour <- factor(final_data$start_hour, levels = as.character(0:2
 
 ggplot(data = final_data, aes(x = start_hour, y = trip_time)) + 
   stat_summary(geom = "bar", fun = "mean") +
-  labs(x = "Hour of the Day", y = "Average Trip Duration", title = "Average Trip Duration by Hour of the Day")
+  labs(x = "Hour of the Day", y = "Trip Duration Range", title = "Average Trip Duration Range by Hour of the Day")
 ```
 
 Figure 2
 
-(distance graph)
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+echo = F
+
+ggplot(data = final_data, aes(x = distance, y = trip_time)) + 
+  #stat_summary(geom = "line", fun = "mean") + 
+  stat_summary(geom = "point", fun = "mean") +
+  labs(x = "Distance", y = "Trip Duration Range", title = "Average Trip Duration Range by Distance")
+```
 
 To better understand which variables had the most influence on trip duration, a principal component analysis was conducted.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data_normalized <- scale(pca_data)
+
+data_pca <- prcomp(data_normalized, scale. = TRUE)
+summary(data_pca)
+```
 
 Figure 3
 
@@ -87,3 +102,5 @@ In the factor map, the arrows close to "trip_duration" represent variables that 
 **Discussion**
 
 **Conclusion**
+
+This information is useful for bikeshare

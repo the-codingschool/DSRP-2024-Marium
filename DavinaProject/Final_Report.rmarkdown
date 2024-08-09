@@ -9,6 +9,7 @@ Title\
 
 when loading file: save final data as rds file and load that
 
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 #install.packages("tidyverse")
 library(tidyr) 
@@ -46,6 +47,7 @@ load(file = "final_data.Rdata")
 load(file="pca_data.Rdata")
 ```
 
+
 **Abstract**
 
 The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024 that were 30 minutes in duration and under 1500 kilometers in distance between the starting and ending station, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: status of the rider’s membership, type of bike, starting longitude, ending longitude, and distance between the starting station and ending station. The KNN model achieved the highest accuracy of 63.52% when k=26.
@@ -56,6 +58,7 @@ BlueBikes Boston (formerly Hubway) is a bikeshare system consisting of over 3,00
 
 Figure 1
 
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 echo = F
 final_data$start_hour <- factor(final_data$start_hour, levels = as.character(0:23))
@@ -65,7 +68,9 @@ ggplot(data = final_data, aes(x = start_hour, y = trip_time)) +
   labs(x = "Hour of the Day", y = "Trip Duration Range", title = "Average Trip Duration Range by Hour of the Day")
 ```
 
+
 Figure 2
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 echo = F
@@ -76,7 +81,9 @@ ggplot(data = final_data, aes(x = distance, y = trip_time)) +
   labs(x = "Distance", y = "Trip Duration Range", title = "Average Trip Duration Range by Distance")
 ```
 
+
 To better understand which variables had the most influence on trip duration, a principal component analysis was conducted.
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data_normalized <- scale(pca_data)
@@ -85,15 +92,19 @@ data_pca <- prcomp(data_normalized, scale. = TRUE)
 summary(data_pca)
 ```
 
+
 Figure 3
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 fviz_eig(data_pca, addlabels = TRUE)
 ```
 
+
 The scree plot plateaus at the 6th variable. Therefore, selecting five variables for training a KNN model would be most effective.
 
 Figure 4
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 fviz_pca_var(data_pca, col.var="cos2",
@@ -101,6 +112,7 @@ fviz_pca_var(data_pca, col.var="cos2",
             repel = TRUE,
             title = "Factor Map")
 ```
+
 
 (factor map)
 
@@ -121,6 +133,7 @@ Using this information a KNN (k-nearest neighbor) model was developed to predict
 5\)
 
 To determine the optimal k-value, the following plots were used.
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 set.seed(123)
@@ -184,8 +197,10 @@ ggplot(accuracy_df, aes(x = k, y = accuracy)) +
   theme_minimal()
 ```
 
+
 **Discussion**
 
 **Conclusion**
 
 This information is useful for bikeshare
+

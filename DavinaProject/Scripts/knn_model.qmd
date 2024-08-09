@@ -192,7 +192,7 @@ compute_distance <- function(start_lng, start_lat, end_lng, end_lat) {
   distHaversine(c(start_lng, start_lat), c(end_lng, end_lat))
 }
 
-trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 1500, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
+trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) <= 1500, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat)/1000, NA)
 #trip_distance <- ifelse(trip_distance <= 3000, trip_distance, NA)
 
 #trip_distance <- ifelse(mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat) >= 50, mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat), NA)
@@ -246,6 +246,7 @@ final_data <- data_frame(
   end_lon = data_original$end_lng,
   trip_time = as.numeric(trip_time_num))
 
+
 final_data$trip_time <- as.numeric(cut(final_data$trip_time, breaks = numsfive, labels = ranges, include.lowest = TRUE))
 
 #final_data$trip_time <- as.numeric(final_data$trip_time)
@@ -272,7 +273,7 @@ trial_data <- data_frame(
   start_station_id_hash = conv_data$start_station_id_hashed,
   end_station_id_hash = conv_data$start_station_id_hashed,
   start_hour = hour(conv_data$start_timeform),
-  distance = mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat),
+  distance = mapply(compute_distance, data_original$start_lng, data_original$start_lat, data_original$end_lng, data_original$end_lat)/1000,
   start_lon = data_original$start_lng,
   start_lat = data_original$start_lat,
   end_lat = data_original$end_lat,
@@ -337,7 +338,7 @@ test_data
 knn_model <- knn(train = train_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')], 
                  test = test_data[, c('casual', 'distance','start_lon','end_lon','classic_bike')], 
                 cl = train_data$trip_time, 
-                k = 33)
+                k = 22)
 #highest: 0.5904073 
 # c('distance','start_lon','start_lat','end_lat','end_lon','classic_bike')
 #k=21
@@ -365,7 +366,7 @@ cat('\nAccuracy:', accuracy, '\n')
 
 ```{r}
 # Define the range of k-values to test
-k_values <- seq(1,10)
+k_values <- seq(1,15)
 accuracy <- numeric(length(k_values))
 
 # Prepare training and test sets

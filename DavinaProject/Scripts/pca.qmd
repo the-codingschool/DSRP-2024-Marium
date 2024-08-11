@@ -153,7 +153,7 @@ trip_distance <- ifelse(mapply(compute_distance, num_data$start_lng, num_data$st
 
 trip_time_num <- ifelse(as.numeric(num_data$trip_time) <= 30, as.numeric(num_data$trip_time), NA)
 
-final_data <- data_frame(
+pca_data <- data_frame(
   sun = conv_data$sun,
   sat = conv_data$sat,
   classic_bike = conv_data$classic_bike,
@@ -170,19 +170,23 @@ final_data <- data_frame(
   end_lon = num_data$end_lng,
   trip_duration = as.numeric(trip_time_num))
 
-final_data$trip_duration <- as.numeric(cut(final_data$trip_duration, breaks = numsfive, labels = ranges, include.lowest = TRUE))
+pca_data$trip_duration <- as.numeric(cut(pca_data$trip_duration, breaks = numsfive, labels = ranges, include.lowest = TRUE))
 
 #final_data$trip_time <- as.numeric(final_data$trip_time)
 
-final_data <- na.omit(final_data)
+pca_data <- na.omit(pca_data)
 
-final_data
+pca_data
+```
+
+```{r}
+save(pca_data, file = "pca_data.Rdata")
 ```
 
 Principal Component Analysis
 
 ```{r}
-data_normalized <- scale(final_data)
+data_normalized <- scale(pca_data)
 
 data_pca <- prcomp(data_normalized, scale. = TRUE)
 summary(data_pca)

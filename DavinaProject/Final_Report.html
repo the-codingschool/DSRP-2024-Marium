@@ -56,9 +56,27 @@ ul.task-list li input[type="checkbox"] {
 ● Link to git repo (mention your project folder and data folders)</p>
 <p>when loading file: save final data as rds file and load that</p>
 <p><strong>Abstract</strong></p>
-<p>The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024 that were 30 minutes in duration and under 1500 kilometers in distance between the starting and ending station, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: status of the rider’s membership, type of bike, starting longitude, ending longitude, and distance between the starting station and ending station. The KNN model achieved the highest accuracy of 63.52% when k=26.</p>
+<p>The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024 that were 30 minutes in duration and under 1500 kilometers in distance between the starting and ending station, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: status of the rider’s membership, type of bike, starting longitude, ending longitude, and distance between the starting station and ending station. The KNN model achieved the highest accuracy of 63.52% when k=33.</p>
 <p><strong>Background</strong></p>
-<p>BlueBikes Boston (formerly Hubway) is a bikeshare system consisting of over 3,000 bikes in 400+ stations across Boston, Brookline, Cambridge, Somerville and Everett. In 2023, there were an estimated 2.9 million trips completed by this system. Although it is a vital mode of transportation for many commuters, BlueBikes Boston does not have a feature to predict the duration of a trip. Therefore, this study aims to address this issue by identifying the factors that impact trip duration and developing a KNN model to predict trip duration. The initial hypothesis of this study is that the starting hour of the trip and the distance between the starting and ending locations will be the highest contributors to trip duration.</p>
+<p>Transportation is crucial to many for commuting, sight-seeing, shopping, and other travel necessities. According to the United States Department of Transportation, 33% of emissions in the United States resulted from transportation in 2019 (<em>Climate Action</em>, 2022). In a 2024 United States Census report, it was reported that 140 million people commute to work (<em>Census Bureau</em>, 2024). It is not practical to reduce the number of commuters; however, encouraging alternative methods of travel that do not harm the environment is far more realistic.</p>
+<p>Biking is an ideal method of environmentally-counsious transportation, specifically for commutes in the same city. In the greater Boston area, the bikeshare system BlueBikes (formerly Hubway) has over 3,000 bikes in 400+ stations across Boston, Brookline, Cambridge, Somerville and Everett (<em>Bluebikes: Metro-Boston</em>, n.d.). In 2023, there were an estimated 2.9 million trips completed by this system (<em>Bluebikes: Metro-Boston</em>, n.d.). Although it is a vital mode of transportation for many commuters, BlueBikes Boston does not have a feature to predict the duration of a trip. Therefore, this study aims to address this question: Which variables have the most influence on the duration of a trip and can these factors predict the duration?</p>
+<p>The dataset used in this study contains all of the trips through the BlueBikes system during the month of June in 2024. It contains the following information for 478,860 trips:</p>
+<ul>
+<li><p>“ride_id” [character] - unique alphanumeric ID number of the rider</p></li>
+<li><p>“rideable_type” [character] - classical bike or electrical bike</p></li>
+<li><p>“started_at” [character] - start date of trip in YMD format and start time in HMS format</p></li>
+<li><p>“ended_at” [character] - start date of trip in YMD format and start time in HMS format</p></li>
+<li><p>“start_station_name” [character] - location name and street name</p></li>
+<li><p>“start_station_id” [character] - unique alphanumeric ID number of the starting station</p></li>
+<li><p>“end_station_name” [character] - location name and street name</p></li>
+<li><p>“end_station_id” [character] - unique alphanumeric ID number of the ending station</p></li>
+<li><p>“start_lat” [double] - starting latitude</p></li>
+<li><p>“start_lng” [double] - starting longitude</p></li>
+<li><p>“end_lat” [double] - ending latitude</p></li>
+<li><p>“end_lng” [double] - ending longitude</p></li>
+<li><p>“member_casual” [character] - member of BlueBikes or casual user of BlueBikes</p></li>
+</ul>
+<p>The initial hypothesis of this study is that the starting hour of the trip and the distance between the starting and ending locations will be the highest contributors to trip duration.</p>
 <p>Figure 1</p>
 <div class="cell">
 <div class="cell-output-display">
@@ -79,7 +97,8 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<p>To better understand which variables had the most influence on trip duration, a principal component analysis was conducted.</p>
+<p><strong>Method</strong></p>
+<p>To test the hypothesis, better understand which variables had the most influence on trip duration, a principal component analysis was conducted.</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
 <pre><code>Importance of components:
@@ -120,10 +139,69 @@ Cumulative Proportion  1.000e+00</code></pre>
 </div>
 <p>(factor map)</p>
 <p>In the factor map, the arrows close to “trip_duration” represent variables that are closely related to it. For example _______. In addition, the longest arrows represent variables that are highly represented in the dataset and can serve to</p>
+<p>Using this information a KNN (k-nearest neighbor) model was developed to predict trip duration. The following variables were selected:</p>
+<p>1) Status of the rider’s membership</p>
+<p>2) Type of bike used</p>
+<p>3) Starting longitude of the trip</p>
+<p>4) Ending longitude of the trip</p>
+<p>5) Distance between the starting station and ending station of the trip</p>
+<p>To determine the optimal k-value, the following plots were used.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Report_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Report_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Through these plots k=33 was selected as the optimal k-value to utilize for this model. The model resulted in the following.</p>
 <p><strong>Results</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Confusion Matrix:</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   pred
+        1     2     3     4     5     6
+  1 10520  2808    49    15    19    66
+  2  3299 11891   311    15     7    21
+  3   757  2641   335    15    14    33
+  4   459   817    86    23    12    36
+  5   416   421    55    11    23    39
+  6   372   260    41    21    18    84</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Accuracy: 0.635268 </code></pre>
+</div>
+</div>
 <p><strong>Discussion</strong></p>
+<p>The accuracy of 63.52% suggests that including additional variables in the machine learning model could improve effectiveness. Another possibility is that distance, starting latitude, and ending latitude should have been grouped in discrete ranges (like trip duration) rather than be considered as continuous variables.</p>
+<p>It is also important to note that this model operates under the assumption that factors such as weather, road type, user physical ability, etc. remain consistent for all users and do not influence the trip time. However, these variables will undeniably have an effect on trip duration, which is another reason for the accuracy rate remaining below a desirable level.</p>
 <p><strong>Conclusion</strong></p>
 <p>This information is useful for bikeshare</p>
+<p><strong>Code and Data Availability</strong></p>
+<p>The original dataset can be found publically on the BlueBikes website under the title “<a href="https://s3.amazonaws.com/hubway-data/202406-bluebikes-tripdata.zip">202406-bluebikes-tripdata.zip</a>.”</p>
+<p>Code for creating the dataset used in this study, conducting tests, and developing visualizations can be found in ___.</p>
+<p><strong>Acknowledgements</strong></p>
+<p>I would like to thank the following for their support:</p>
+<ul>
+<li><p>The Data Science Research Program hosted by The Coding School with Columbia University for supporting me in learning R programming, data analysis skills, and connecting me with my mentor</p></li>
+<li><p>Marium Tapal for serving as a mentor for the duration of this research</p></li>
+<li><p>Renate Toldo for answering my technical questions and her encouragement throughout this process</p></li>
+<li><p>Sarah Parker for serving as the Data Science Research Program instructor and explaining the fundamentals of R programming</p></li>
+</ul>
+<p>I would also like to thank BlueBikes Boston for their transparency and allowing the public to access trip information.</p>
 
 </main>
 <!-- /main column -->

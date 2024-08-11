@@ -366,7 +366,7 @@ cat('\nAccuracy:', accuracy, '\n')
 
 ```{r}
 # Define the range of k-values to test
-k_values <- seq(1,15)
+k_values <- seq(30,40)
 accuracy <- numeric(length(k_values))
 
 # Prepare training and test sets

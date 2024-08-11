@@ -46,21 +46,18 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<p>Title<br>
-● Name<br>
-● Abstract: problem, approach, results, conclusion (1-2 sentences each)<br>
-● Background, Research Question &amp; Hypotheses<br>
-● Figures with descriptions<br>
-○ All your interesting findings/results<br>
-● Discussion/Conclusions/Further Directions/Next Steps<br>
-● Link to git repo (mention your project folder and data folders)</p>
-<p>when loading file: save final data as rds file and load that</p>
-<p><strong>Abstract</strong></p>
-<p>The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024 that were 30 minutes in duration and under 1500 kilometers in distance between the starting and ending station, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: status of the rider’s membership, type of bike, starting longitude, ending longitude, and distance between the starting station and ending station. The KNN model achieved the highest accuracy of 63.52% when k=33.</p>
-<p><strong>Background</strong></p>
+<section id="biking-in-boston-predicting-bluebikes-trip-duration-through-machine-learning" class="level1">
+<h1><strong>Biking in Boston: Predicting BlueBikes Trip Duration through Machine Learning</strong></h1>
+<p>Davina Gerald Raj</p>
+<section id="abstract" class="level2">
+<h2 class="anchored" data-anchor-id="abstract"><strong>Abstract</strong></h2>
+<p>The duration of a bike trip can be influenced by many factors. Using the trips taken by users of the BlueBikes Boston system in the month of June 2024 that were 30 minutes in duration and under 1500 kilometers in distance between the starting and ending station, this study aims to identify factors that influence trip duration and utilize those factors to predict the duration of a trip through a KNN model. Through a principal component analysis and different combinations of variables, six variables were selected: status of the rider’s membership, type of bike, starting longitude, ending longitude, and distance between the starting station and ending station. The KNN model achieved the highest accuracy of 63.52% when k=33. This accuracy level suggests that important variables may have been overlooked in the creation of the variable. However, the development of this model depicts the potential for machine learning models to be utilized to attract new users and encourage environmentally-conscious practices.</p>
+</section>
+<section id="background" class="level2">
+<h2 class="anchored" data-anchor-id="background"><strong>Background</strong></h2>
 <p>Transportation is crucial to many for commuting, sight-seeing, shopping, and other travel necessities. According to the United States Department of Transportation, 33% of emissions in the United States resulted from transportation in 2019 (<em>Climate Action</em>, 2022). In a 2024 United States Census report, it was reported that 140 million people commute to work (<em>Census Bureau</em>, 2024). It is not practical to reduce the number of commuters; however, encouraging alternative methods of travel that do not harm the environment is far more realistic.</p>
-<p>Biking is an ideal method of environmentally-counsious transportation, specifically for commutes in the same city. In the greater Boston area, the bikeshare system BlueBikes (formerly Hubway) has over 3,000 bikes in 400+ stations across Boston, Brookline, Cambridge, Somerville and Everett (<em>Bluebikes: Metro-Boston</em>, n.d.). In 2023, there were an estimated 2.9 million trips completed by this system (<em>Bluebikes: Metro-Boston</em>, n.d.). Although it is a vital mode of transportation for many commuters, BlueBikes Boston does not have a feature to predict the duration of a trip. Therefore, this study aims to address this question: Which variables have the most influence on the duration of a trip and can these factors predict the duration?</p>
-<p>The dataset used in this study contains all of the trips through the BlueBikes system during the month of June in 2024. It contains the following information for 478,860 trips:</p>
+<p>Biking is an ideal method of environmentally-counsious transportation, specifically for commutes in the same city. In the greater Boston area, the bikeshare system BlueBikes (formerly Hubway) has over 3,000 bikes in 400+ stations across Boston, Brookline, Cambridge, Somerville and Everett (<em>Bluebikes: Metro-Boston</em>, n.d.). In 2023, there were an estimated 2.9 million trips completed by this system (<em>Bluebikes: Metro-Boston</em>, n.d.). Although it is a vital mode of transportation for many commuters, BlueBikes Boston does not have a feature to predict the duration of a trip. Therefore, this study aims to address this question: Which variables have the most influence on the duration of a trip and can these factors predict the duration? The initial hypothesis of this study is that the starting hour of the trip and the distance between the starting and ending locations will be the highest contributors to trip duration.</p>
+<p>The dataset used in this study contains all of the trips through the BlueBikes system during the month of June in 2024. It was obtained through the BlueBikes website (see Code and Data Availability for more information). It contains the following information for 478,860 trips:</p>
 <ul>
 <li><p>“ride_id” [character] - unique alphanumeric ID number of the rider</p></li>
 <li><p>“rideable_type” [character] - classical bike or electrical bike</p></li>
@@ -76,8 +73,39 @@ ul.task-list li input[type="checkbox"] {
 <li><p>“end_lng” [double] - ending longitude</p></li>
 <li><p>“member_casual” [character] - member of BlueBikes or casual user of BlueBikes</p></li>
 </ul>
-<p>The initial hypothesis of this study is that the starting hour of the trip and the distance between the starting and ending locations will be the highest contributors to trip duration.</p>
-<p>Figure 1</p>
+</section>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method"><strong>Method</strong></h2>
+<section id="data-wrangling" class="level3">
+<h3 class="anchored" data-anchor-id="data-wrangling"><strong><em>Data Wrangling</em></strong></h3>
+<p>The dataset had the following binary columns added, with 1 representing true and 0 representing false:</p>
+<ul>
+<li><p>“sun”: whether the ride occurred on Sunday</p></li>
+<li><p>“sat”: whether the ride occurred on Saturday</p></li>
+<li><p>“classic_bike”: whether the ride occurred on a classic bike</p></li>
+<li><p>“weekend”: whether the ride occurred on the weekend (Saturday or Sunday)</p></li>
+<li><p>“member”: whether the rider is a member</p></li>
+<li><p>“casual”: whether the rider is not a member</p></li>
+</ul>
+<p>The dataset had the following hashed columns added:</p>
+<ul>
+<li><p>“start_station_id_hash”: purely numerical representation of starting stations</p></li>
+<li><p>“end_station_id_hash”: purely numerical representation of ending stations</p></li>
+</ul>
+<p>The data set had the following values calculated from existing columns:</p>
+<ul>
+<li><p>“start_hour”: number 1-24 that represents the hour of the trip’s starting time</p></li>
+<li><p>“distance”: the distance in meters between the starting coordinates and the ending coordinates</p></li>
+<li><p>“trip_duration”: the difference in time between the starting time and the ending time, classified in ranges of five minute intervals each.</p></li>
+</ul>
+<p>For this study, only trip durations under 30 minutes and trip distances under 1500 meters were considered.</p>
+<p>All empty values were removed from the dataset.</p>
+</section>
+<section id="exploratory-data-analysis-and-hypothesis-formation" class="level3">
+<h3 class="anchored" data-anchor-id="exploratory-data-analysis-and-hypothesis-formation"><strong><em>Exploratory Data Analysis and Hypothesis Formation</em></strong></h3>
+<p>Exploratory plots were made to test the relationship between these variables to trip time. The hour of the trip’s starting time and the distance of the trip seemed to influence the trip duration the most. This led to the hypothesis that the starting hour and distance of the trip would influence trip duration ranges the most and can be used to develop a KNN (k-nearest neighbor) model to predict the duration.</p>
+<section id="figure-1-average-trip-duration-range-by-hour-of-the-day" class="level4">
+<h4 class="anchored" data-anchor-id="figure-1-average-trip-duration-range-by-hour-of-the-day">Figure 1: Average Trip Duration Range by Hour of the Day</h4>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -87,7 +115,10 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<p>Figure 2</p>
+<p><em>Note.</em> This plot shows that trips tend to be shorter from 5 AM to 8 AM compared to the rest of the day. This suggests that the starting hour of the trip has some influence over the duration of the trip.</p>
+</section>
+<section id="figure-2-average-trip-duration-range-by-distance" class="level4">
+<h4 class="anchored" data-anchor-id="figure-2-average-trip-duration-range-by-distance">Figure 2: Average Trip Duration Range by Distance</h4>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -97,8 +128,14 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<p><strong>Method</strong></p>
-<p>To test the hypothesis, better understand which variables had the most influence on trip duration, a principal component analysis was conducted.</p>
+<p><em>Note.</em> This plot shows that trips tend to be shorter from 5 AM to 8 AM compared to the rest of the day. This suggests that the starting hour of the trip has some influence over the duration of the trip.</p>
+</section>
+</section>
+<section id="principal-component-analysis-and-visualizations" class="level3">
+<h3 class="anchored" data-anchor-id="principal-component-analysis-and-visualizations"><strong><em>Principal Component Analysis and Visualizations</em></strong></h3>
+<p>To test the hypothesis and identify which variables had the most influence on trip duration, a principal component analysis was conducted.</p>
+<section id="results-of-principal-component-analysis" class="level4">
+<h4 class="anchored" data-anchor-id="results-of-principal-component-analysis">Results of Principal Component Analysis:</h4>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
 <pre><code>Importance of components:
@@ -116,7 +153,9 @@ Proportion of Variance 0.000e+00
 Cumulative Proportion  1.000e+00</code></pre>
 </div>
 </div>
-<p>Figure 3</p>
+</section>
+<section id="figure-3-scree-plot" class="level4">
+<h4 class="anchored" data-anchor-id="figure-3-scree-plot">Figure 3: Scree Plot</h4>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -126,8 +165,10 @@ Cumulative Proportion  1.000e+00</code></pre>
 </div>
 </div>
 </div>
-<p>The scree plot plateaus at the 6th variable. Therefore, selecting five variables for training a KNN model would be most effective.</p>
-<p>Figure 4</p>
+<p><em>Note.</em> The scree plot begins to plateau at the 6th variable. Therefore, selecting five variables for training a KNN model would be most effective.</p>
+</section>
+<section id="figure-4-factor-map" class="level4">
+<h4 class="anchored" data-anchor-id="figure-4-factor-map">Figure 4: Factor Map</h4>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -137,8 +178,11 @@ Cumulative Proportion  1.000e+00</code></pre>
 </div>
 </div>
 </div>
-<p>(factor map)</p>
-<p>In the factor map, the arrows close to “trip_duration” represent variables that are closely related to it. For example _______. In addition, the longest arrows represent variables that are highly represented in the dataset and can serve to</p>
+<p><em>Note.</em> In the factor map, the arrows close to “trip_duration” represent variables that are closely related to it. For example, “casual,” “start_hour,” and “sat” are closel. In addition, the longest arrows represent variables that are highly represented in the dataset. These include “start_station_id_hash,” “end_station_id_hash,” “member,” and “casual.”</p>
+</section>
+</section>
+<section id="knn-model" class="level3">
+<h3 class="anchored" data-anchor-id="knn-model"><strong><em>KNN Model</em></strong></h3>
 <p>Using this information a KNN (k-nearest neighbor) model was developed to predict trip duration. The following variables were selected:</p>
 <p>1) Status of the rider’s membership</p>
 <p>2) Type of bike used</p>
@@ -146,6 +190,8 @@ Cumulative Proportion  1.000e+00</code></pre>
 <p>4) Ending longitude of the trip</p>
 <p>5) Distance between the starting station and ending station of the trip</p>
 <p>To determine the optimal k-value, the following plots were used.</p>
+<section id="figure-5-accuracy-of-knn-model-vs-k-value-multiples-of-five" class="level4">
+<h4 class="anchored" data-anchor-id="figure-5-accuracy-of-knn-model-vs-k-value-multiples-of-five">Figure 5: Accuracy of KNN Model vs K-value (Multiples of Five)</h4>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -155,6 +201,10 @@ Cumulative Proportion  1.000e+00</code></pre>
 </div>
 </div>
 </div>
+<p><em>Note.</em> This plot is used to identify the range with the highest accuracy. In this case, it is clear that k=35 results in the highest accuracy. Therefore, k-values in between 30 and 40 can be plotted next to identify the optimal k-value.</p>
+</section>
+<section id="figure-6-accuracy-of-knn-model-vs-k-values-between-30-and-40" class="level4">
+<h4 class="anchored" data-anchor-id="figure-6-accuracy-of-knn-model-vs-k-values-between-30-and-40">Figure 6: Accuracy of KNN Model vs K-values Between 30 and 40</h4>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -164,8 +214,16 @@ Cumulative Proportion  1.000e+00</code></pre>
 </div>
 </div>
 </div>
-<p>Through these plots k=33 was selected as the optimal k-value to utilize for this model. The model resulted in the following.</p>
-<p><strong>Results</strong></p>
+<p><em>Note.</em> This plot reaches the highest accuracy at k=33.</p>
+<p>Through these plots k=33 was selected as the optimal k-value to utilize for this model.</p>
+</section>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results"><strong>Results</strong></h2>
+<p>The KNN model was trained on the status of the rider’s membership (“casual”), the type of bike used (“classic_bike”), the starting longitude of the trip (“start_lon”), the ending longitude of the trip (“end_lon”), and the distance between the starting station and ending station of the trip (“distance”) with a k-value of 33.</p>
+<section id="knn-results" class="level4">
+<h4 class="anchored" data-anchor-id="knn-results">KNN Results:</h4>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
 <pre><code>Confusion Matrix:</code></pre>
@@ -185,15 +243,22 @@ Cumulative Proportion  1.000e+00</code></pre>
 Accuracy: 0.635268 </code></pre>
 </div>
 </div>
-<p><strong>Discussion</strong></p>
-<p>The accuracy of 63.52% suggests that including additional variables in the machine learning model could improve effectiveness. Another possibility is that distance, starting latitude, and ending latitude should have been grouped in discrete ranges (like trip duration) rather than be considered as continuous variables.</p>
+</section>
+</section>
+<section id="discussion-and-conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="discussion-and-conclusion"><strong>Discussion and Conclusion</strong></h2>
+<p>The accuracy of 63.52% suggests that including additional variables in the machine learning model could improve effectiveness. Another possibility is that distance, starting latitude, and ending latitude should have been grouped in discrete ranges (like trip duration) rather than be considered as continuous variables. Predictions can be generalized to trips in the BlueBikes Boston system under 30 minutes in duration and below 1500 kilometers in distance.</p>
 <p>It is also important to note that this model operates under the assumption that factors such as weather, road type, user physical ability, etc. remain consistent for all users and do not influence the trip time. However, these variables will undeniably have an effect on trip duration, which is another reason for the accuracy rate remaining below a desirable level.</p>
-<p><strong>Conclusion</strong></p>
-<p>This information is useful for bikeshare</p>
-<p><strong>Code and Data Availability</strong></p>
+<p>This information is useful for bikeshare systems because it depicts the potential for machine learning models to be developed for the purpose of providing users with more information about their journey. This can attract more users and could increase user satisfaction with the platform. Furthermore, this model shows how machine learning can promote environmentally-aware travel.</p>
+<p>Future areas of research include strengthening the model with different variable combinations, predicting a different variable like distance of the journey, or utilizing a different machine learning model type.</p>
+</section>
+<section id="code-and-data-availability" class="level2">
+<h2 class="anchored" data-anchor-id="code-and-data-availability"><strong>Code and Data Availability</strong></h2>
 <p>The original dataset can be found publically on the BlueBikes website under the title “<a href="https://s3.amazonaws.com/hubway-data/202406-bluebikes-tripdata.zip">202406-bluebikes-tripdata.zip</a>.”</p>
-<p>Code for creating the dataset used in this study, conducting tests, and developing visualizations can be found in ___.</p>
-<p><strong>Acknowledgements</strong></p>
+<p>Code for creating the dataset used in this study, conducting tests, and developing visualizations can be found here: <a href="https://github.com/the-codingschool/DSRP-2024-Marium/tree/d0855b4d444dc0df60419d1468b67ab872cbf848/DavinaProject" class="uri">https://github.com/the-codingschool/DSRP-2024-Marium/tree/d0855b4d444dc0df60419d1468b67ab872cbf848/DavinaProject</a></p>
+</section>
+<section id="acknowledgements" class="level2">
+<h2 class="anchored" data-anchor-id="acknowledgements"><strong>Acknowledgements</strong></h2>
 <p>I would like to thank the following for their support:</p>
 <ul>
 <li><p>The Data Science Research Program hosted by The Coding School with Columbia University for supporting me in learning R programming, data analysis skills, and connecting me with my mentor</p></li>
@@ -202,6 +267,14 @@ Accuracy: 0.635268 </code></pre>
 <li><p>Sarah Parker for serving as the Data Science Research Program instructor and explaining the fundamentals of R programming</p></li>
 </ul>
 <p>I would also like to thank BlueBikes Boston for their transparency and allowing the public to access trip information.</p>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references"><strong>References</strong></h2>
+<p><em>Bluebikes: Metro-Boston Bikeshare Program | Bluebikes Boston</em>. (n.d.). Bluebikes.com. <a href="https://bluebikes.com/" class="uri">https://bluebikes.com/</a></p>
+<p><em>Census Bureau Releases New Brief About Travel to Work Since Pandemic’s Onset</em>. (2024, February 20). Census.gov. <a href="https://www.census.gov/newsroom/press-releases/2024/travel-to-work-since-pandemic.html#:~:text=Almost%20140%20million%20people%20in" class="uri">https://www.census.gov/newsroom/press-releases/2024/travel-to-work-since-pandemic.html#:~:text=Almost%20140%20million%20people%20in</a></p>
+<p><em>Climate Action | US Department of Transportation</em>. (2022, July 29). U.S. Department of Transportation. <a href="https://www.transportation.gov/priorities/climate-and-sustainability/climate-action" class="uri">https://www.transportation.gov/priorities/climate-and-sustainability/climate-action</a></p>
+</section>
+</section>
 
 </main>
 <!-- /main column -->

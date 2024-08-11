@@ -2,6 +2,7 @@
 
 Davina Gerald Raj
 
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 #install.packages("tidyverse")
 library(tidyr) 
@@ -38,6 +39,7 @@ library(geosphere)
 load(file = "final_data.Rdata")
 load(file="pca_data.Rdata")
 ```
+
 
 ## **Abstract**
 
@@ -119,6 +121,7 @@ Exploratory plots were made to test the relationship between these variables to 
 
 #### Figure 1: Average Trip Duration Range by Hour of the Day
 
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 echo = F
 final_data$start_hour <- factor(final_data$start_hour, levels = as.character(0:23))
@@ -128,9 +131,11 @@ ggplot(data = final_data, aes(x = start_hour, y = trip_time)) +
   labs(x = "Hour of the Day", y = "Trip Duration Range", title = "Average Trip Duration Range by Hour of the Day")
 ```
 
+
 *Note.* This plot shows that trips tend to be shorter from 5 AM to 8 AM compared to the rest of the day. This suggests that the starting hour of the trip has some influence over the duration of the trip.
 
 #### Figure 2: Average Trip Duration Range by Distance
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 echo = F
@@ -141,6 +146,7 @@ ggplot(data = final_data, aes(x = distance, y = trip_time)) +
   labs(x = "Distance", y = "Trip Duration Range", title = "Average Trip Duration Range by Distance")
 ```
 
+
 *Note.* This plot shows that trips tend to be shorter from 5 AM to 8 AM compared to the rest of the day. This suggests that the starting hour of the trip has some influence over the duration of the trip.
 
 ### ***Principal Component Analysis and Visualizations***
@@ -149,6 +155,7 @@ To test the hypothesis and identify which variables had the most influence on tr
 
 #### Results of Principal Component Analysis:
 
+
 ```{r echo=FALSE}
 data_normalized <- scale(pca_data)
 
@@ -156,15 +163,19 @@ data_pca <- prcomp(data_normalized, scale. = TRUE)
 summary(data_pca)
 ```
 
+
 #### Figure 3: Scree Plot
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 fviz_eig(data_pca, addlabels = TRUE)
 ```
 
+
 *Note.* The scree plot begins to plateau at the 6th variable. Therefore, selecting five variables for training a KNN model would be most effective.
 
 #### Figure 4: Factor Map
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 fviz_pca_var(data_pca, col.var="cos2",
@@ -172,6 +183,7 @@ fviz_pca_var(data_pca, col.var="cos2",
             repel = TRUE,
             title = "Factor Map")
 ```
+
 
 *Note.* In the factor map, the arrows close to "trip_duration" represent variables that are closely related to it. For example, "casual," "start_hour," and "sat" are closel. In addition, the longest arrows represent variables that are highly represented in the dataset. These include "start_station_id_hash," "end_station_id_hash," "member," and "casual."
 
@@ -192,6 +204,7 @@ Using this information a KNN (k-nearest neighbor) model was developed to predict
 To determine the optimal k-value, the following plots were used.
 
 #### Figure 5: Accuracy of KNN Model vs K-value (Multiples of Five)
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 set.seed(123)
@@ -227,9 +240,11 @@ ggplot(accuracy_df, aes(x = k, y = accuracy)) +
   theme_minimal()
 ```
 
+
 *Note.* This plot is used to identify the range with the highest accuracy. In this case, it is clear that k=35 results in the highest accuracy. Therefore, k-values in between 30 and 40 can be plotted next to identify the optimal k-value.
 
 #### Figure 6: Accuracy of KNN Model vs K-values Between 30 and 40
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 k_values <- seq(30,40)
@@ -265,6 +280,7 @@ ggplot(accuracy_df, aes(x = k, y = accuracy)) +
   theme_minimal()
 ```
 
+
 *Note.* This plot reaches the highest accuracy at k=33.
 
 Through these plots k=33 was selected as the optimal k-value to utilize for this model.
@@ -274,6 +290,7 @@ Through these plots k=33 was selected as the optimal k-value to utilize for this
 The KNN model was trained on the status of the rider’s membership ("casual"), the type of bike used ("classic_bike"), the starting longitude of the trip ("start_lon"), the ending longitude of the trip ("end_lon"), and the distance between the starting station and ending station of the trip ("distance") with a k-value of 33.
 
 #### KNN Results:
+
 
 ```{r echo=FALSE}
 set.seed(123)
@@ -296,6 +313,7 @@ cat('Confusion Matrix:\n')
 print(confusion_matrix)
 cat('\nAccuracy:', accuracy, '\n')
 ```
+
 
 ## **Discussion and Conclusion**
 
@@ -334,3 +352,4 @@ I would also like to thank BlueBikes Boston for their transparency and allowing 
 *Census Bureau Releases New Brief About Travel to Work Since Pandemic’s Onset*. (2024, February 20). Census.gov. <https://www.census.gov/newsroom/press-releases/2024/travel-to-work-since-pandemic.html#:~:text=Almost%20140%20million%20people%20in>
 
 *Climate Action \| US Department of Transportation*. (2022, July 29). U.S. Department of Transportation. <https://www.transportation.gov/priorities/climate-and-sustainability/climate-action>
+

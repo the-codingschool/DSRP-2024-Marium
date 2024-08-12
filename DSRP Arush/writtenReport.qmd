@@ -1,0 +1,59 @@
+# Type of Bike Corresponds to Start Station Name
+
+# Background
+
+Bluebikes is a city based in Boston, Massachusetts that puts bikes in stations for the general public to use for a fee. There are classic and electric bikes and around 489 stations that Bluebikes operates. Bluebikes releasing public data about their bikes that I was able to use to form the research question, "Can the type of bike be predicted if the start station name is given". My hypothesis was that with the machine learning model I am creating the type of bike can be predicted with the start station name.
+
+# Results
+
+![](images/Screenshot%202024-08-08%20112247.png)
+
+This Chi-squared test shows that there is a big correlation between rideable type and the start station name. This is shown through the very low p-value - 2.2e-16.
+
+![](images/Screenshot%202024-08-08%20111613.png)
+
+This bar graph shows the considerable difference between classic and electric bikes. This is important because the considerable difference made me want to dive more into where electric bikes are popular, so Bluebikes can strategically place more electric bikes to achieve customer satisfaction.
+
+![](images/Screenshot%202024-08-08%20111859.png)
+
+This pie chart shows the same thing as the bar graph above but is a better visualization to see a ratio between the two. From this pie chart it is shown that around 75% of bikes are classic and 25% are electric.
+
+![](images/Screenshot%202024-08-08%20112131.png)
+
+This bar graph shows the ten most popular start stations. Using this information I can narrow down which stations classic and electric bikes will be used the most.
+
+![](images/Screenshot%202024-08-08%20112157.png)
+
+This box plot shows the distribution of classic and electric bikes at different stations. From this box plot we can see valuable information such as the median, range, and interquartile ranges.
+
+![](images/Screenshot%202024-08-08%20112220.png)
+
+This heat map shows the same thing as the box plot above which is the distribution of the type of bike and the start station name. It is shown that classic and electric bikes are clustered around station numbers 200-375 and some around station number 25.
+
+![](images/Screenshot%202024-08-08%20112314.png)
+
+This bar graph comes from the accuracy of the machine learning model I created. As it is shown in the large red bar on the left, classic bikes were correctly predicted most of the time. Also, where is says 2 it is shown that the red bar is also higher than the blue, this shows that the amount of times the machine learning model correctly predicted electric bikes was low. This shows room for improvement in my model.
+
+# Abstract
+
+## Problem:
+
+## Approach:
+
+## Results:
+
+## Conclusion:
+
+# Discussion
+
+With these results we can see that the accuracy of the machine learning model peaked at around 79% which is good. With this information Bluebikes can figure out where to place electric and classic bikes to maximize profits. In the grand scheme of things this information can also help reduce global warming because more people will be inclined to use bikes. If Bluebikes is able to expand to more locations this information has the potential to change the world for the better. While this data provides a lot of insight it still does not answer every question. Some next steps could include researching how many bikes should be put at each station to achieve customer satisfaction.
+
+# Code and Data Availability
+
+Data Source: <https://bluebikes.com/system-data>
+
+GitHub Repository: <https://github.com/the-codingschool/DSRP-2024-Marium>
+
+# Acknowledgments
+
+I would like to acknowledge Renate Toldo for helping me with my plots and graphs. I would also like to acknowledge Sarah Parker for helping me with GitHub connection and with loading my data. Lastly, I would like to acknowledge Marium Tapal for giving me better insight on how I should go about using my data for my project.

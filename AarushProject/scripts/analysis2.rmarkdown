@@ -24,6 +24,7 @@ library(corrplot)
 
 
 #read in dataset
+file_name <- list.files("data")
 data <- read.csv("/Users/reddy/Documents/DSRP-Dataset/bluebikes/AarushProject/data/202406-bluebikes-tripdata.csv")
 head(data)
 dim(data)
@@ -49,7 +50,9 @@ data_distance <- data_clean |>
 head(data_distance)
 ```
 
+
 g
+
 
 ```{r}
 data_distance$distance_category <- cut(data_distance$distance_km, 
@@ -71,7 +74,9 @@ data_distance <- data_distance %>%
 head(data_distance)
 ```
 
+
 d
+
 
 ```{r}
 mem.maxVSize()
@@ -86,6 +91,8 @@ set.seed(42)
 sample_size <- 16384
 data_sample <- data_distance[sample(nrow(data_distance), sample_size), ]
 
+# Convert data to data.table
+data_sample <- as.data.table(data_sample)
 
 # Split data into training and testing sets
 split <- sample.split(data_sample$distance_category, SplitRatio = 0.8)
@@ -220,7 +227,7 @@ if (!"Importance" %in% colnames(importance_df)) {
 }
 
 # Plot feature importance
-plot8 <- ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
   geom_bar(stat = "identity") +
   coord_flip() +
   labs(title = "Feature Importance", x = "Feature", y = "Importance") +
@@ -246,7 +253,7 @@ conf_matrix_df <- as.data.frame(as.table(conf_matrix$table))
 colnames(conf_matrix_df) <- c("Prediction", "Reference", "Count")
 
 # Plot heatmap
-plot7 <- ggplot(data = conf_matrix_df, aes(x = Reference, y = Prediction, fill = Count)) +
+ggplot(data = conf_matrix_df, aes(x = Reference, y = Prediction, fill = Count)) +
   geom_tile(color = "white") +
   scale_fill_gradient(low = "skyblue", high = "blue", trans = "log") +
   geom_text(aes(label = Count), color = "white", size = 4) +
@@ -307,7 +314,3 @@ ggplot(results, aes(x = TrainingSize, y = Accuracy)) +
   theme_minimal()
 ```
 
-```{r}
-saveRDS(plot8, "rfmodel22")
-
-```

@@ -1,0 +1,125 @@
+---
+title: "The Predicted Distances of Bike Rides are Impacted by the Time of Day"
+author: "By Aarush Reddy"
+format: html
+editor: visual
+---
+
+```{r setup}
+#| include: false 
+library(dplyr)
+library(janitor)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(maps)
+library(ggmap)
+library(sp)
+library(leaflet)
+library(geosphere)
+library(rpart)
+library(randomForest)
+library(class)
+library(caret) 
+library(caTools)
+library(downloader)
+library(FNN)
+library(readxl)
+library(sf)
+library(RColorBrewer)
+library(corrplot)
+library(here)
+```
+
+## Abstract
+
+Cars overtake public transportation statistics in many different ways in the US and there is a need to understand the data around already existing public transportation to make them better and more accessible. The research question analyzed in this report is "Which variables affect the distance of each bike ride, and can distance be accurately predicted based on those variables" and the dataset used to answer the question is from BlueBIkes, a bike-sharing service in the Boston area with over 3000 bikes. The dataset is seperated by each ride taken and there are certain variables mesured off of those ride. To analyze the predictors of distance, the variables used were hour(the time of day), day of the week, rideable type(electric or classic bike), and member type (member or day pass). Using these variables, I created a knn model and a random forest model and viewed the most important features for each model. The time of day became the most influential feature out of all the models used. Understanding that variables like time of day are strong predictors of distance can help companies like BlueBikes in optimizing bike distribution and creating incentives for users.
+
+## Background
+
+The dataset used to answer the research question, "Which variables affect the distance of each bike ride, and can distance be accurately predicted based on those variables", comes from the BlueBikes Boston website where their data is accessible. This data is all BlueBike rides taken throughout June 2024.
+
+## Results
+
+To analyze which variables were affecting the distance of a bike ride, a KNN model seemed to be the best fit. The features put into this model were the time of day, day of the week, bike type(electric or normal), and member type (member or casual).
+
+### Figure 1
+
+```{r}
+#| echo: False
+plot2 <- readRDS(here::here("FinalReportFile", "model_con1"))
+plot2
+```
+
+This model shows the correct and incorrect predictions of the knn model. The accuracy of this model is 65%.
+
+### Figure 2
+
+```{r}
+#| echo: False
+plot1 <- readRDS(here::here("FinalReportFile", "model_featureI1"))
+plot1
+```
+
+Based on the knn model from before, I decided to see which variables were the most influential in making predictions. The most influential variable is the time of day and the member type has a negative importance. The next model will check if the member type if negatively influencing the model by reducing the accuracy or adding noise to the model
+
+### Figure 3
+
+```{r}
+#| echo: False
+plot3 <- readRDS(here::here("FinalReportFile", "model_con2"))
+plot3
+```
+
+This confusion matrix shows the result of a knn model without the member type feature. The accuracy stayed the same, suggesting that the member feature was adding noise to the model and not negatively affecting the accuracy.
+
+### Figure 4
+
+```{r}
+#| echo: False
+plot4 <- readRDS(here::here("FinalReportFile", "model_featureI2"))
+plot4
+```
+
+This is the feature importance graph of the model without the member feature. The time of day is still the most influential feature.
+
+### Figure 5
+
+```{r}
+#| echo: False
+plot5 <- readRDS(here::here("FinalReportFile", "rfmodel12"))
+plot5
+```
+
+A random forest model, that creates predictions in a different way than knn models, is showing the samw accuracy with a similar spread of predictions
+
+```{r}
+#| echo: False
+plot6 <- readRDS(here::here("FinalReportFile", "rfmodel22"))
+plot6
+```
+
+The feature importance of the random forest model is showing that the time of day is still the most influential feature.
+
+## Discussion
+
+From these models and the data as a whole, it is clear that the time of day is the most influential predictor in predicting the distance of a bike ride. While this may be the case for this dataset, I believe there are many other predictors of distance that are not in this dataset. Understanding that the time of day is the most influential predictor in bike ride distances can help companies like BlueBikes in creating a system around predictions to create incentives for when times of day are predicted to have shorter distance bike rides or optimizing bike distribution across stations. These understandings can also be applied to other ride sharing systems which can increase the number of people using public transportation in the US.
+
+## Code & Data Sources
+
+The GitHub repository with the code for this project can be found [here](https://github.com/the-codingschool/DSRP-2024-Marium/tree/main) under the AarushProject folder
+
+The BlueBikes system data can be found [here](https://bluebikes.com/system-data)
+
+## Acknowledgements
+
+I would like to thank:
+
+-   Renate Toldo for guiding me by helping me with my code
+
+-   Marium Tapal for serving as a mentor and helping with conceptual questions
+
+-   Sarah Parker for teaching the necessary coding skills for this project
+
+-   The Coding School for providing this program
